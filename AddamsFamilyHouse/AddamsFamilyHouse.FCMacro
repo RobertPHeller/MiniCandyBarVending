@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sat May 31 08:01:55 2025
-#  Last Modified : <250602.0850>
+#  Last Modified : <250602.1407>
 #
 #  Description	
 #
@@ -211,6 +211,7 @@ def Mesh2doc(imesh,matrix,name,doc):
     mesh = Mesh.Mesh(meshtriangles)
     if matrix != None:
         mesh.transform(matrix)
+    #mesh.scale(Base.Vector(25.4,25.4,25.4))
     obj = doc.addObject("Mesh::Feature",name)
     obj.Mesh = mesh
     obj.Label=name
@@ -258,24 +259,28 @@ if "addams_family_house" in App.listDocuments().keys():
     App.closeDocument("addams_family_house")
 doc = App.newDocument("addams_family_house")
 
+Gui.SendMsgToActiveView("ViewFit")
 
 
 for i,scene in enumerate(gltf.scenes):
-    print("scene #%d: %s"%(i,scene))
+    #print("scene #%d: %s"%(i,scene))
     for j,inode in enumerate(scene.nodes):
         #printNodeTree(inode)
         NodeTree2doc(inode,scene.name,doc)
 
 gltf = GLTF2().load('addams_family_mansion.glb')
 
-print("addams_family_mansion.glb:")
+#print("addams_family_mansion.glb:")
 
 if "addams_family_mansion" in App.listDocuments().keys():
     App.closeDocument("addams_family_mansion")
 doc = App.newDocument("addams_family_mansion")
 
 for i,scene in enumerate(gltf.scenes):
-    print("scene #%d: %s"%(i,scene)) 
+    #print("scene #%d: %s"%(i,scene)) 
     for j,inode in enumerate(scene.nodes):
         #printNodeTree(inode)
         NodeTree2doc(inode,scene.name,doc)
+
+Gui.SendMsgToActiveView("ViewFit")
+
