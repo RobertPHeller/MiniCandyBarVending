@@ -1,0 +1,276 @@
+#*****************************************************************************
+#
+#  System        : 
+#  Module        : 
+#  Object Name   : $RCSfile$
+#  Revision      : $Revision$
+#  Date          : $Date$
+#  Author        : $Author$
+#  Created By    : Robert Heller
+#  Created       : Sat May 31 08:01:55 2025
+#  Last Modified : <250601.1451>
+#
+#  Description	
+#
+#  Notes
+#
+#  History
+#	
+#*****************************************************************************
+#
+#    Copyright (C) 2025  Robert Heller D/B/A Deepwoods Software
+#			51 Locke Hill Road
+#			Wendell, MA 01379-9728
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# 
+#
+#*****************************************************************************
+
+
+import FreeCAD as App
+import Part, TechDraw, Mesh
+from FreeCAD import Base
+
+import os
+import sys
+sys.path.append(os.path.dirname(__file__))
+sys.path.append('/usr/local/lib/python3.11/site-packages/')
+import inspect
+import struct
+import numpy as np
+
+from pygltflib import GLTF2
+
+def isnotmethod(x):
+    return not inspect.ismethod(x)
+
+def namesof(l):
+    result = list()
+    for name,value in l:
+        result.append(name)
+    return result
+
+#print(namesof(inspect.getmembers(gltf.accessors[0],isnotmethod)))
+
+def dupstring(string,count):
+    result = ""
+    for i in range(0,count):
+        result = result + string
+    return result
+    
+def printMesh(imesh,indent=0):
+    mesh = gltf.meshes[imesh]
+    binary_blob = gltf.binary_blob()
+    for primitive in mesh.primitives:
+        # get the binary data for this mesh primitive from the buffer
+        points_accessor = gltf.accessors[primitive.attributes.POSITION]
+        points_buffer_view = gltf.bufferViews[points_accessor.bufferView]
+        if points_accessor.componentType == 5120:
+            dtype="int8"
+        elif points_accessor.componentType == 5121:
+            dtype="uint8"
+        elif points_accessor.componentType == 5122:
+            dtype="int16"
+        elif points_accessor.componentType == 5123:
+            dtype="uint16"
+        elif points_accessor.componentType == 5125:
+            dtype="uint"
+        elif points_accessor.componentType == 5126:
+            dtype="float32"
+        points = np.frombuffer(
+            binary_blob[
+                points_buffer_view.byteOffset
+                    + points_accessor.byteOffset : points_buffer_view.byteOffset
+                    + points_buffer_view.byteLength
+            ],
+            dtype=dtype,
+            count=points_accessor.count * 3,
+        ).reshape((-1, 3))
+        triangles_accessor = gltf.accessors[primitive.indices]
+        dtype="uint32"
+        if triangles_accessor.componentType == 5120:
+            dtype="int8"
+        elif triangles_accessor.componentType == 5121:
+            dtype="uint8"
+        elif triangles_accessor.componentType == 5122:
+            dtype="int16"
+        elif triangles_accessor.componentType == 5123:
+            dtype="uint16"
+        elif triangles_accessor.componentType == 5125:
+            dtype="uint32"
+        elif triangles_accessor.componentType == 5126:
+            dtype="float32"
+        triangles_buffer_view = gltf.bufferViews[triangles_accessor.bufferView]
+        triangles = np.frombuffer(
+            binary_blob[
+                triangles_buffer_view.byteOffset
+                    + triangles_accessor.byteOffset : triangles_buffer_view.byteOffset
+                    + triangles_buffer_view.byteLength
+            ],
+            dtype=dtype,
+            count=triangles_accessor.count,
+        ).reshape((-1, 3))
+    print("%sMesh#: %d %d points, %d triangles"%(dupstring("\t",indent),imesh,points.size,triangles.size))
+    #print("%s+      points_accessor: %s, triangles_accessor: %s"%\
+    #        (dupstring("\t",indent),points_accessor,triangles_accessor))
+    print("%s+    points is %s, triangles is %s"%(dupstring("\t",indent),points.shape,triangles.shape))
+    l,w = triangles.shape
+    min,pw = points.shape
+    max = 0
+    for itri in range(0,l):
+        for jtry in range(0,w):
+            if triangles[itri, jtry] < min:
+                min=triangles[itri, jtry]
+            if triangles[itri, jtry] > max:
+                max=triangles[itri, jtry]
+    print("%s+    triangles index range is %d..%d"%(dupstring("\t",indent),min,max))
+    meshtriangles = list()
+    for itri in range(0,l):
+        for jtry in range(0,w):
+            point = list()
+            for kpoint in range(0,pw):
+                point.append(points[triangles[itri, jtry],kpoint])
+            meshtriangles.append(point)
+    print("%s+    meshtriangles = %s"%(dupstring("\t",indent),meshtriangles))
+
+def Mesh2doc(imesh,matrix,name,doc):
+    mesh = gltf.meshes[imesh]
+    binary_blob = gltf.binary_blob()
+    for primitive in mesh.primitives:
+        # get the binary data for this mesh primitive from the buffer
+        points_accessor = gltf.accessors[primitive.attributes.POSITION]
+        points_buffer_view = gltf.bufferViews[points_accessor.bufferView]
+        if points_accessor.componentType == 5120:
+            dtype="int8"
+        elif points_accessor.componentType == 5121:
+            dtype="uint8"
+        elif points_accessor.componentType == 5122:
+            dtype="int16"
+        elif points_accessor.componentType == 5123:
+            dtype="uint16"
+        elif points_accessor.componentType == 5125:
+            dtype="uint"
+        elif points_accessor.componentType == 5126:
+            dtype="float32"
+        points = np.frombuffer(
+            binary_blob[
+                points_buffer_view.byteOffset
+                    + points_accessor.byteOffset : points_buffer_view.byteOffset
+                    + points_buffer_view.byteLength
+            ],
+            dtype=dtype,
+            count=points_accessor.count * 3,
+        ).reshape((-1, 3))
+        triangles_accessor = gltf.accessors[primitive.indices]
+        dtype="uint32"
+        if triangles_accessor.componentType == 5120:
+            dtype="int8"
+        elif triangles_accessor.componentType == 5121:
+            dtype="uint8"
+        elif triangles_accessor.componentType == 5122:
+            dtype="int16"
+        elif triangles_accessor.componentType == 5123:
+            dtype="uint16"
+        elif triangles_accessor.componentType == 5125:
+            dtype="uint32"
+        elif triangles_accessor.componentType == 5126:
+            dtype="float32"
+        triangles_buffer_view = gltf.bufferViews[triangles_accessor.bufferView]
+        triangles = np.frombuffer(
+            binary_blob[
+                triangles_buffer_view.byteOffset
+                    + triangles_accessor.byteOffset : triangles_buffer_view.byteOffset
+                    + triangles_buffer_view.byteLength
+            ],
+            dtype=dtype,
+            count=triangles_accessor.count,
+        ).reshape((-1, 3))
+    l,w = triangles.shape
+    min,pw = points.shape
+    meshtriangles = list()
+    for itri in range(0,l):
+        for jtry in range(0,w):
+            point = Base.Vector(points[triangles[itri, jtry],0],
+                                points[triangles[itri, jtry],1],
+                                points[triangles[itri, jtry],2])
+            meshtriangles.append(point)
+    mesh = Mesh.Mesh(meshtriangles)
+    if matrix != None:
+        mesh.transform(matrix)
+    obj = doc.addObject("Mesh::Feature",name)
+    obj.Mesh = mesh
+    obj.Label=name
+    obj.ViewObject.ShapeColor=tuple([0.0,1.0,0.0])
+    
+def printNodeTree(inode,indent=0):
+    node = gltf.nodes[inode]
+    print("%sNode ID: %d, %s"%(dupstring("\t",indent),inode,node.name))
+    mesh = node.mesh
+    if mesh != None:
+        printMesh(mesh,indent)
+    for jnode in node.children:
+        printNodeTree(jnode,indent+1)
+        
+
+def NodeTree2doc(inode,doc,matrix=None):
+    node = gltf.nodes[inode]
+    if node.matrix != None:
+        m = node.matrix
+        newmatrix = Base.Matrix(m[0],m[1],m[2],m[3],        
+                                m[4],m[5],m[6],m[7],        
+                                m[8],m[9],m[10],m[11],      
+                                m[12],m[13],m[14],m[15])
+        if matrix != None:
+            matrix = matrix.multiply(newmatrix)
+        else:
+            matrix = newmatrix
+    #print("*** NodeTree2doc(): Node %d: Matrix is %s"%(inode,node.matrix))
+    mesh = node.mesh
+    if mesh != None:
+        Mesh2doc(mesh,matrix,node.name,doc)
+    for jnode in node.children:
+        NodeTree2doc(jnode,doc,matrix)
+
+gltf = GLTF2().load('addams_family_house.glb')
+
+#print("addams_family_house.glb:")
+
+if "addams_family_house" in App.listDocuments().keys():
+    App.closeDocument("addams_family_house")
+doc = App.newDocument("addams_family_house")
+
+
+
+for i,scene in enumerate(gltf.scenes):
+    #print("scene #%d: %s"%(i,scene))
+    for j,inode in enumerate(scene.nodes):
+        #printNodeTree(inode)
+        NodeTree2doc(inode,doc)
+
+gltf = GLTF2().load('addams_family_mansion.glb')
+
+#print("addams_family_mansion.glb:")
+
+#if "addams_family_mansion" in App.listDocuments().keys():
+#    App.closeDocument("addams_family_mansion")
+#doc = App.newDocument("addams_family_mansion")
+#
+#for i,scene in enumerate(gltf.scenes):
+#    #print("scene #%d: %s"%(i,scene)) 
+#    for j,inode in enumerate(scene.nodes):
+#        #printNodeTree(inode)
+#        NodeTree2doc(inode,doc)
