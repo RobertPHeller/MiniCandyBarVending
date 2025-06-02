@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sat May 31 08:01:55 2025
-#  Last Modified : <250601.1451>
+#  Last Modified : <250602.0850>
 #
 #  Description	
 #
@@ -214,7 +214,7 @@ def Mesh2doc(imesh,matrix,name,doc):
     obj = doc.addObject("Mesh::Feature",name)
     obj.Mesh = mesh
     obj.Label=name
-    obj.ViewObject.ShapeColor=tuple([0.0,1.0,0.0])
+    obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
     
 def printNodeTree(inode,indent=0):
     node = gltf.nodes[inode]
@@ -226,24 +226,29 @@ def printNodeTree(inode,indent=0):
         printNodeTree(jnode,indent+1)
         
 
-def NodeTree2doc(inode,doc,matrix=None):
+def NodeTree2doc(inode,name,doc,matrix=None):
     node = gltf.nodes[inode]
     if node.matrix != None:
         m = node.matrix
-        newmatrix = Base.Matrix(m[0],m[1],m[2],m[3],        
-                                m[4],m[5],m[6],m[7],        
-                                m[8],m[9],m[10],m[11],      
-                                m[12],m[13],m[14],m[15])
-        if matrix != None:
-            matrix = matrix.multiply(newmatrix)
-        else:
+        newmatrix = Base.Matrix(m[0],m[4],m[8],m[12],        
+                                m[1],m[5],m[9],m[13],        
+                                m[2],m[6],m[10],m[14],      
+                                m[3],m[7],m[11],m[15])
+        if matrix == None:
             matrix = newmatrix
-    #print("*** NodeTree2doc(): Node %d: Matrix is %s"%(inode,node.matrix))
+        else:
+            matrix = matrix.multiply(newmatrix)
+    #print("*** NodeTree2doc(): Node %d: Matrix is %s"%(inode,matrix))
+    if node.name != "":
+        if name == "":
+            name = node.name
+        else:
+            name = name + "." + node.name
     mesh = node.mesh
     if mesh != None:
-        Mesh2doc(mesh,matrix,node.name,doc)
+        Mesh2doc(mesh,matrix,name,doc)
     for jnode in node.children:
-        NodeTree2doc(jnode,doc,matrix)
+        NodeTree2doc(jnode,name,doc,matrix)
 
 gltf = GLTF2().load('addams_family_house.glb')
 
@@ -256,21 +261,21 @@ doc = App.newDocument("addams_family_house")
 
 
 for i,scene in enumerate(gltf.scenes):
-    #print("scene #%d: %s"%(i,scene))
+    print("scene #%d: %s"%(i,scene))
     for j,inode in enumerate(scene.nodes):
         #printNodeTree(inode)
-        NodeTree2doc(inode,doc)
+        NodeTree2doc(inode,scene.name,doc)
 
 gltf = GLTF2().load('addams_family_mansion.glb')
 
-#print("addams_family_mansion.glb:")
+print("addams_family_mansion.glb:")
 
-#if "addams_family_mansion" in App.listDocuments().keys():
-#    App.closeDocument("addams_family_mansion")
-#doc = App.newDocument("addams_family_mansion")
-#
-#for i,scene in enumerate(gltf.scenes):
-#    #print("scene #%d: %s"%(i,scene)) 
-#    for j,inode in enumerate(scene.nodes):
-#        #printNodeTree(inode)
-#        NodeTree2doc(inode,doc)
+if "addams_family_mansion" in App.listDocuments().keys():
+    App.closeDocument("addams_family_mansion")
+doc = App.newDocument("addams_family_mansion")
+
+for i,scene in enumerate(gltf.scenes):
+    print("scene #%d: %s"%(i,scene)) 
+    for j,inode in enumerate(scene.nodes):
+        #printNodeTree(inode)
+        NodeTree2doc(inode,scene.name,doc)
