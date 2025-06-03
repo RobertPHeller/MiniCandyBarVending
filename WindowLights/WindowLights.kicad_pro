@@ -389,7 +389,8 @@
           "Net-(D101-Pad6)",
           "Net-(D102-Pad4)",
           "Net-(D102-Pad5)",
-          "Net-(D102-Pad6)"
+          "Net-(D102-Pad6)",
+          "Net-(R102-Pad1)"
         ],
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
