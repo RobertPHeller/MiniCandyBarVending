@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Mon Jun 2 15:01:05 2025
-#  Last Modified : <250604.0717>
+#  Last Modified : <250604.1636>
 #
 #  Description	
 #
@@ -42,7 +42,7 @@
 
 
 import FreeCAD as App
-import Part, TechDraw, Mesh, TechDrawGui
+import Part, TechDraw, Mesh, MeshPart, TechDrawGui
 from FreeCAD import Base
 
 import os
@@ -71,6 +71,41 @@ from collections import defaultdict
 
 def EidthBucket(x):
     return round(x / 3.5)*3.5
+
+def mesh2solid(mesh):
+    segments = mesh.getPlanarSegments(3.5)
+    print("*** mesh2solid(): len(segments) is ",len(segments) )
+    faces = []
+
+    for i in segments:
+        print("*** mesh2solid() [for i in segments]: len(i) is ",len(i))
+        if len(i) > 0:
+            # a segment can have inner holes
+            wires = MeshPart.wireFromSegment(mesh, i)
+            print("*** mesh2solid() [for i in segments]: len(wires) is ",len(wires) )
+            # we assume that the exterior boundary is that one with the biggest bounding box
+            if len(wires) > 0:
+                ext = None
+                max_length=0
+                for i in wires:
+                    print("*** mesh2solid() [for i in wires]: i is ",i)
+                    if i.BoundBox.DiagonalLength > max_length:
+                        max_length = i.BoundBox.DiagonalLength
+                        ext = i
+                print("*** mesh2solid() [after for i in wires]: ext = ",ext)
+                wires.remove(ext)
+                # all interior wires mark a hole and must reverse their orientation, otherwise Part.Face fails
+                for i in wires:
+                    i.reverse()
+                
+                # make sure that the exterior wires comes as first in the list
+                wires.insert(0, ext)
+                faces.append(Part.Face(wires))
+    print("*** mesh2solid(): len(faces) is ",len(faces))
+    if len(faces) == 0:
+        return None
+    solid = Part.Solid(Part.Shell(faces))
+    return(solid)
 
 def mesh2YPlanes(points,triangles,namebase,newdoc):
     Yplanes = defaultdict(list)
@@ -108,14 +143,16 @@ def mesh2YPlanes(points,triangles,namebase,newdoc):
             #print("*** mesh is ",mesh)
             name = "%sYRoof%d"%(namebase,iy)
             #print("*** name is ",name)
-            shape = Part.Shape()
-            shape.makeShapeFromMesh(mesh.Topology, 3.5) 
-            solid = Part.makeSolid(shape)
-            obj = newdoc.addObject("Part::Feature",name)
-            #print("*** obj is ",obj)
-            obj.Shape = solid
-            obj.Label=name
-            obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
+            #shape = Part.Shape()
+            #shape.makeShapeFromMesh(mesh.Topology, 3.5) 
+            #solid = Part.makeSolid(shape)
+            solid = mesh2solid(mesh)
+            if solid != None:
+                obj = newdoc.addObject("Part::Feature",name)
+                #print("*** obj is ",obj)
+                obj.Shape = solid
+                obj.Label=name
+                obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
 
 def mesh2ZXPlanes(points,triangles,namebase,newdoc):
     Zplanes = defaultdict(list)
@@ -148,19 +185,22 @@ def mesh2ZXPlanes(points,triangles,namebase,newdoc):
                 for tp  in tri:
                     meshtriangles.append(tp)
         if len(meshtriangles) > 0:
-            #print("*** len(meshtriangles) is ",len(meshtriangles))
+            print("*** len(meshtriangles) is ",len(meshtriangles))
             mesh = Mesh.Mesh(meshtriangles)
-            #print("*** mesh is ",mesh)
+            print("*** mesh is ",mesh)
             name = "%sZWall%d"%(namebase,iz)
-            #print("*** name is ",name)
-            shape = Part.Shape()
-            shape.makeShapeFromMesh(mesh.Topology, 3.5) 
-            solid = Part.makeSolid(shape)
-            obj = newdoc.addObject("Part::Feature",name)
-            #print("*** obj is ",obj)
-            obj.Shape = solid
-            obj.Label=name
-            obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
+            print("*** name is ",name)
+            #shape = Part.Shape()
+            #shape.makeShapeFromMesh(mesh.Topology, 3.5) 
+            #solid = Part.makeSolid(shape)
+            solid = mesh2solid(mesh)
+            print("*** solid is ",solid)
+            if solid != None:
+                obj = newdoc.addObject("Part::Feature",name)
+                print("*** obj is ",obj)
+                obj.Shape = solid
+                obj.Label=name
+                obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
     Xplanes = defaultdict(list)
     xs = set()
     for t in triangles:
@@ -196,14 +236,16 @@ def mesh2ZXPlanes(points,triangles,namebase,newdoc):
             #print("*** mesh is ",mesh)
             name = "%sXWall%d"%(namebase,ix)
             #print("*** name is ",name)
-            shape = Part.Shape()
-            shape.makeShapeFromMesh(mesh.Topology, 0.05) 
-            solid = Part.makeSolid(shape)
-            obj = newdoc.addObject("Part::Feature",name)
-            #print("*** obj is ",obj)
-            obj.Shape = solid
-            obj.Label=name
-            obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
+            #shape = Part.Shape()
+            #shape.makeShapeFromMesh(mesh.Topology, 3.5) 
+            #solid = Part.makeSolid(shape)
+            solid = mesh2solid(mesh)
+            if solid != None:
+                obj = newdoc.addObject("Part::Feature",name)
+                #print("*** obj is ",obj)
+                obj.Shape = solid
+                obj.Label=name
+                obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
 
 if __name__ == '__main__':
     doc = None
@@ -221,6 +263,7 @@ if __name__ == '__main__':
         newdoc = App.newDocument("addams_family_house_panels")
     App.ActiveDocument=newdoc
 
+    # X and Z Panels (Walls)
     house = doc.Sketchfab_Scene_Sketchfab_model_root_GLTF_SceneRootNode_House_0_Object_4
     houseMesh = house.Mesh
     topo = houseMesh.Topology
@@ -251,7 +294,7 @@ if __name__ == '__main__':
     topo = dormersMesh.Topology
     points, triangles = topo
     mesh2ZXPlanes(points,triangles,"Roof_windows_21_Object_54",newdoc)
-
+    # Y panels (Roofs and Overhangs)
     overhang = doc.Sketchfab_Scene_Sketchfab_model_root_GLTF_SceneRootNode_Overhang_supports_3_Object_11
     overhangMesh = overhang.Mesh
     topo = overhangMesh.Topology
@@ -278,6 +321,51 @@ if __name__ == '__main__':
     points, triangles = topo
     mesh2YPlanes(points,triangles,"Tower_roof_1_Object_7",newdoc)
 
-
     Gui.SendMsgToActiveView("ViewFit")
     
+    # insert a Page object and assign a template
+    newdoc.addObject('TechDraw::DrawSVGTemplate','SmallCutPanelTemplate') 
+    newdoc.SmallCutPanelTemplate.Template = "smallcutpanel.svg" 
+    newdoc.addObject('TechDraw::DrawPage','SmallCutPanelPage_1')
+    newdoc.SmallCutPanelPage_1.Template = newdoc.SmallCutPanelTemplate
+    newdoc.SmallCutPanelPage_1.ViewObject.show()
+    
+    # Panels (1/8" hardwood laser cut plywood):
+    # Front walls:
+    # House_0_Object_4ZWall57 -- Main
+    # House_0_Object_4ZWall62 -- Right protrusion
+    # House_0_Object_4ZWall63 -- Left protrusion and tower
+    # House_0_Object_5ZWall7  -- Main foundation
+    # House_0_Object_5ZWall8  -- Right protrusion foundation
+    # House_0_Object_5ZWall9  -- Left protrusion foundation
+    # Left Walls
+    # Right Walls
+    # Roofs and Overhanges
+    # Triangle_roof_6_Object_17ZWall1
+    # Triangle_roof_6_Object_17ZWall2
+    # Greenhouse_7_Object_21ZWall34
+    # Roof_windows_21_Object_54ZWall18
+    # Roof_windows_21_Object_54ZWall17
+    # Roof_windows_21_Object_54ZWall16
+    # Overhang_supports_3_Object_11YRoof6
+    # Overhang_supports_3_Object_11YRoof8
+    # Front_overhang_roof_4_Object_13YRoof0
+    # Front_overhang_roof_4_Object_13YRoof1
+    # Front_overhang_roof_4_Object_13YRoof5
+    # Greenhouse_roof_5_Object_15YRoof0
+    # Greenhouse_roof_5_Object_15YRoof7
+    # Joined_roof_2_Object_9YRoof0
+    # Joined_roof_2_Object_9YRoof11
+    # Tower_roof_1_Object_7YRoof0
+    # Tower_roof_1_Object_7YRoof9
+
+    frontMain = newdoc.House_0_Object_4ZWall57
+    front_main = newdoc.addObject('TechDraw::DrawViewPart','Front Main')
+    newdoc.SmallCutPanelPage_1.addView(front_main)
+    front_main.Source = frontMain
+    front_main.X = 190
+    front_main.Y = 150
+    front_main.Rotation = 0
+    front_main.Direction = (0,0,1)
+    
+    newdoc.recompute()
