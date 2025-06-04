@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Mon Jun 2 15:01:05 2025
-#  Last Modified : <250603.1632>
+#  Last Modified : <250604.0717>
 #
 #  Description	
 #
@@ -71,6 +71,51 @@ from collections import defaultdict
 
 def EidthBucket(x):
     return round(x / 3.5)*3.5
+
+def mesh2YPlanes(points,triangles,namebase,newdoc):
+    Yplanes = defaultdict(list)
+    ys = set()
+    for t in triangles:
+        for tp in t:
+            p = points[tp]
+            #print("*** p is ",p)
+            yb = EidthBucket(p.y)
+            Yplanes[yb].append(t)
+            #print("*** planes[",yb,"] = ",Yplanes[yb])
+            ys.add(yb)
+            #print("*** ys is ",ys)
+    ylist = list()
+    for y in ys:
+        ylist.append(y)
+    ylist.sort()
+    for iy,y in enumerate(ylist):
+        #print("*** iy = ",iy,", y = ",y)
+        meshtriangles = list()
+        for t in Yplanes[y]:
+            tri = list()
+            for tp in t:
+                point = points[tp]
+                yb = EidthBucket(point.y)
+                #print("*** yb = ",yb,", point.y = ",point.y)
+                if yb == y:
+                    tri.append(point)
+            if len(tri) == 3:
+                for tp  in tri:
+                    meshtriangles.append(tp)
+        if len(meshtriangles) > 0:
+            #print("*** len(meshtriangles) is ",len(meshtriangles))
+            mesh = Mesh.Mesh(meshtriangles)
+            #print("*** mesh is ",mesh)
+            name = "%sYRoof%d"%(namebase,iy)
+            #print("*** name is ",name)
+            shape = Part.Shape()
+            shape.makeShapeFromMesh(mesh.Topology, 3.5) 
+            solid = Part.makeSolid(shape)
+            obj = newdoc.addObject("Part::Feature",name)
+            #print("*** obj is ",obj)
+            obj.Shape = solid
+            obj.Label=name
+            obj.ViewObject.ShapeColor=tuple([0.5,0.5,0.5])
 
 def mesh2ZXPlanes(points,triangles,namebase,newdoc):
     Zplanes = defaultdict(list)
@@ -206,7 +251,32 @@ if __name__ == '__main__':
     topo = dormersMesh.Topology
     points, triangles = topo
     mesh2ZXPlanes(points,triangles,"Roof_windows_21_Object_54",newdoc)
-            
+
+    overhang = doc.Sketchfab_Scene_Sketchfab_model_root_GLTF_SceneRootNode_Overhang_supports_3_Object_11
+    overhangMesh = overhang.Mesh
+    topo = overhangMesh.Topology
+    points, triangles = topo
+    mesh2YPlanes(points,triangles,"Overhang_supports_3_Object_11",newdoc)
+    frontoverhang = doc.Sketchfab_Scene_Sketchfab_model_root_GLTF_SceneRootNode_Front_overhang_roof_4_Object_13
+    frontoverhangMesh = frontoverhang.Mesh
+    topo = frontoverhangMesh.Topology
+    points, triangles = topo
+    mesh2YPlanes(points,triangles,"Front_overhang_roof_4_Object_13",newdoc)
+    greenhouseRoof = doc.Sketchfab_Scene_Sketchfab_model_root_GLTF_SceneRootNode_Greenhouse_roof_5_Object_15
+    greenhouseRoofMesh = greenhouseRoof.Mesh
+    topo = greenhouseRoofMesh.Topology
+    points, triangles = topo
+    mesh2YPlanes(points,triangles,"Greenhouse_roof_5_Object_15",newdoc)
+    joinedRoof = doc.Sketchfab_Scene_Sketchfab_model_root_GLTF_SceneRootNode_Joined_roof_2_Object_9
+    joinedRoofMesh = joinedRoof.Mesh
+    topo = joinedRoofMesh.Topology
+    points, triangles = topo
+    mesh2YPlanes(points,triangles,"Joined_roof_2_Object_9",newdoc)
+    tower = doc.Sketchfab_Scene_Sketchfab_model_root_GLTF_SceneRootNode_Tower_roof_1_Object_7
+    towerMesh = tower.Mesh
+    topo = towerMesh.Topology
+    points, triangles = topo
+    mesh2YPlanes(points,triangles,"Tower_roof_1_Object_7",newdoc)
 
 
     Gui.SendMsgToActiveView("ViewFit")
