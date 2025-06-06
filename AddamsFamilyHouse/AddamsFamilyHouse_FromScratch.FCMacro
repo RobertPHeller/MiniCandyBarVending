@@ -1,0 +1,191 @@
+#*****************************************************************************
+#
+#  System        : 
+#  Module        : 
+#  Object Name   : $RCSfile$
+#  Revision      : $Revision$
+#  Date          : $Date$
+#  Author        : $Author$
+#  Created By    : Robert Heller
+#  Created       : Thu Jun 5 14:31:17 2025
+#  Last Modified : <250605.2144>
+#
+#  Description	
+#
+#  Notes
+#
+#  History
+#	
+#*****************************************************************************
+#
+#    Copyright (C) 2025  Robert Heller D/B/A Deepwoods Software
+#			51 Locke Hill Road
+#			Wendell, MA 01379-9728
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# 
+#
+#*****************************************************************************
+
+
+import FreeCAD as App
+import Part, TechDraw, Mesh, MeshPart, TechDrawGui
+from FreeCAD import Base
+
+import os
+import sys
+sys.path.append(os.path.dirname(__file__))
+import time
+from PySide.QtCore import QCoreApplication, QEventLoop, QTimer
+
+def execute(loop, ms):
+    timer = QTimer()
+    timer.setSingleShot(True)
+    
+    timer.timeout.connect(loop.quit)
+    timer.start(ms)
+    loop.exec_()
+
+def sleep(ms):
+    if not QCoreApplication.instance():
+        app = QCoreApplication([])
+        execute(app, ms)
+    else:
+        loop = QEventLoop()
+        execute(loop, ms)
+
+from abc import ABCMeta, abstractmethod, abstractproperty
+
+class BirchPanel(metaclass=ABCMeta):
+    @property
+    def Thickness(self):
+        return .125*25.4    
+
+class LargeArchWindow(BirchPanel):
+    # -263.86346435546875,  .8360995054244995  -- -241.0014190673828 , 0.8360995054244995
+    # -263.86346435546875 , 50.67988586425781                  50.67988586425781
+    #       -252.43243408203125 , 66.17835235595703
+    __archMinorRadius = (-241.0014190673828) - (-252.43243408203125)
+    __archMajorRadius = 66.17835235595703-50.67988586425781
+    __bottomRectHeight = 50.67988586425781-.8360995054244995
+    __bottomRectWidth = (-241.0014190673828) - (-263.86346435546875)
+    def __init__(self,origin,side='Front'):
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        if side == 'Front':
+            archOrig = origin.add(Base.Vector(self.__archMinorRadius,0,
+                                              self.__bottomRectHeight))
+            archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
+            archMinor = archOrig.add(Base.Vector(-self.__archMinorRadius,0,0))
+            extrude = Base.Vector(0,self.Thickness,0)
+            print("*** LargeArchWindow.__init__(): archOrig is ",archOrig)
+            print("*** LargeArchWindow.__init__(): archMajor is ",archMajor)
+            print("*** LargeArchWindow.__init__(): archMinor is ",archMinor)
+            archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
+            archWire = Part.Wire(archEllipse.toShape())
+            archFace = Part.Face(archWire)
+            arch     = archFace.extrude(extrude)
+            base     = Part.makePlane(self.__bottomRectHeight,
+                                      self.__bottomRectWidth,
+                                      origin,
+                                      Base.Vector(0,1,0)).extrude(extrude)
+            self.window = base.fuse(arch)
+        elif side == 'Left':
+            archOrig = origin.add(Base.Vector(0,
+                                              -self.__archMinorRadius,
+                                              self.__bottomRectHeight))
+            archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
+            rchMinor = archOrig.add(Base.Vector(0,self.__archMinorRadius,0))
+            extrude = Base.Vector(-self.Thickness,0,0)
+            archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
+            archWire = Part.Wire(archEllipse.toShape())
+            archFace = Part.Face(archWire)
+            arch     = archFace.extrude(extrude)
+            temp = Base.Vector(0,-self.__bottomRectWidth,0)
+            base     = Part.makePlane(self.__bottomRectHeight,
+                                      self.__bottomRectWidth,
+                                      origin.add(temp),
+                                      Base.Vector(-1,0,0)).extrude(extrude)
+            self.window = base.fuse(arch)
+        elif side == 'Right':
+            archOrig = origin.add(Base.Vector(0,
+                                              self.__archMinorRadius,
+                                              self.__bottomRectHeight))
+            archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
+            rchMinor = archOrig.add(Base.Vector(0,self.__archMinorRadius,0))
+            extrude = Base.Vector(self.Thickness,0,0)
+            archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
+            archWire = Part.Wire(archEllipse.toShape())
+            archFace = Part.Face(archWire)
+            arch     = archFace.extrude(extrude)
+            base     = Part.makePlane(self.__bottomRectHeight,
+                                      self.__bottomRectWidth,
+                                      origin,
+                                      Base.Vector(1,0,0)).extrude(extrude)
+            self.window = base.fuse(arch)
+        else:
+            raise RuntimeError("unsuported side!")
+    def Cut(self,wall):
+        return wall.cut(self.window)
+
+class WallPanel(BirchPanel):
+    __Color = (.8,.8,.8)
+    def __init__(self,name,origin,width,height,windows=[],side='Front'):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        if side == 'Front':
+            print("*** WallPanel(): width = ",width,", height = ",height)
+            extrude = Base.Vector(0,self.Thickness,0)
+            panel = Part.makePlane(height,width,origin,Base.Vector(0,1,0)).extrude(extrude)
+        elif side == 'Left':
+            extrude = Base.Vector(-self.Thickness,0,0)
+            panel = Part.makePlane(height,width,
+                                   origin.add(Base.Vector(0,-width,0)),
+                                   Base.Vector(-1,0,0)).extrude(extrude)
+        elif side == 'Right':
+            extrude = Base.Vector(self.Thickness,0,0)
+            panel = Part.makePlane(height,width,origin,Base.Vector(1,0,0)).extrude(extrude)
+        else:
+            raise RuntimeError("unsuported side!")
+        for org in windows:
+            panel = LargeArchWindow(origin.add(org),side).Cut(panel)
+        self.wall = panel
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.wall
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.__Color
+
+
+
+if __name__ == '__main__':
+    if "AddamsFamilyHouse" in App.listDocuments().keys():
+        App.closeDocument("AddamsFamilyHouse")
+    doc = App.newDocument("AddamsFamilyHouse")
+    LeftProtrude = WallPanel("LeftProtrude",
+                             Base.Vector(0,0,0),
+                             (-213.16818237304688) - (-293.39385986328125), 
+                             200.30540466308594-(-18.670610427856445),
+                             [Base.Vector(-263.86346435546875-(-293.39385986328125),0,
+                                          0.8360995054244995-(-18.670610427856445)),
+                              Base.Vector(-263.86346435546875-(-293.39385986328125),0,
+                                          106.11219024658203-(-18.670610427856445))])
+    LeftProtrude.show(doc)
