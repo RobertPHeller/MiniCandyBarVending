@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 16:19:56 2025
-#  Last Modified : <250605.2059>
+#  Last Modified : <250606.1418>
 #
 #  Description	
 #
@@ -124,11 +124,29 @@ def allYAtX(mesh,x):
     YList.sort()
     return YList
 
-def pointNear(mesh,x,y):
+def pointNearXY(mesh,x,y):
     topo=mesh.Topology
     points, triangles = topo 
     result = list()
     for p in points:
         if Near(p.x,x-2,x+2) and Near(p.y,y-2,y+2):
+            result.append(p)
+    return result
+
+def pointNearXZ(mesh,x,z):
+    topo=mesh.Topology
+    points, triangles = topo 
+    result = list()
+    for p in points:
+        if Near(p.x,x-2,x+2) and Near(p.z,z-2,z+2):
+            result.append(p)
+    return result
+
+def pointNearXYZ(mesh,x,y,z):
+    topo=mesh.Topology
+    points, triangles = topo 
+    result = list()
+    for p in points:
+        if Near(p.x,x-2,x+2) and Near(p.y,y-2,y+2) and Near(p.z,z-2,z+2):
             result.append(p)
     return result

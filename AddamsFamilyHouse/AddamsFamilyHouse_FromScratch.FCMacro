@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250605.2144>
+#  Last Modified : <250606.1459>
 #
 #  Description	
 #
@@ -72,7 +72,13 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 class BirchPanel(metaclass=ABCMeta):
     @property
     def Thickness(self):
-        return .125*25.4    
+        return .125 * 25.4
+    @property
+    def FingerWidth(self):
+        return .5 * 25.4
+    @property
+    def Color(self):
+        return (.8,.8,.8)
 
 class LargeArchWindow(BirchPanel):
     # -263.86346435546875,  .8360995054244995  -- -241.0014190673828 , 0.8360995054244995
@@ -92,9 +98,9 @@ class LargeArchWindow(BirchPanel):
             archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
             archMinor = archOrig.add(Base.Vector(-self.__archMinorRadius,0,0))
             extrude = Base.Vector(0,self.Thickness,0)
-            print("*** LargeArchWindow.__init__(): archOrig is ",archOrig)
-            print("*** LargeArchWindow.__init__(): archMajor is ",archMajor)
-            print("*** LargeArchWindow.__init__(): archMinor is ",archMinor)
+            #print("*** LargeArchWindow.__init__(): archOrig is ",archOrig)
+            #print("*** LargeArchWindow.__init__(): archMajor is ",archMajor)
+            #print("*** LargeArchWindow.__init__(): archMinor is ",archMinor)
             archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
             archWire = Part.Wire(archEllipse.toShape())
             archFace = Part.Face(archWire)
@@ -143,14 +149,13 @@ class LargeArchWindow(BirchPanel):
         return wall.cut(self.window)
 
 class WallPanel(BirchPanel):
-    __Color = (.8,.8,.8)
-    def __init__(self,name,origin,width,height,windows=[],side='Front'):
+    def __init__(self,name,origin,width,height,*,windows=[],side='Front'):
         self.name = name
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
         self.origin = origin
         if side == 'Front':
-            print("*** WallPanel(): width = ",width,", height = ",height)
+            #print("*** WallPanel(): width = ",width,", height = ",height)
             extrude = Base.Vector(0,self.Thickness,0)
             panel = Part.makePlane(height,width,origin,Base.Vector(0,1,0)).extrude(extrude)
         elif side == 'Left':
@@ -160,32 +165,127 @@ class WallPanel(BirchPanel):
                                    Base.Vector(-1,0,0)).extrude(extrude)
         elif side == 'Right':
             extrude = Base.Vector(self.Thickness,0,0)
-            panel = Part.makePlane(height,width,origin,Base.Vector(1,0,0)).extrude(extrude)
+            panel = Part.makePlane(height,width,
+                                   origin.add(Base.Vector(0,width,0)),
+                                   Base.Vector(1,0,0)).extrude(extrude)
         else:
             raise RuntimeError("unsuported side!")
         for org in windows:
             panel = LargeArchWindow(origin.add(org),side).Cut(panel)
         self.wall = panel
+    def CutXZfingers(self,*,startx=0,endx=0,zoffset=0,yoffset=0):
+        x = startx
+        ZNorm=Base.Vector(0,0,1)
+        panel = self.wall
+        while x <= endx:
+            panel = panel.cut(Part.makePlane(self.FingerWidth,\
+                                             self.Thickness,\
+                                             self.origin.add(Base.Vector(x,yoffset,zoffset)),\
+                                             ZNorm).extrude(Base.Vector(0,0,self.Thickness)))
+            x += self.FingerWidth*2
+        self.wall = panel
+    def CutYZfingers(self,*,starty=0,endy=0,zoffset=0,xoffset=0):
+        y = starty
+        ZNorm=Base.Vector(0,0,1) 
+        panel = self.wall
+        while y <= endy:
+            panel = panel.cut(Part.makePlane(self.Thickness,\
+                                             self.FingerWidth,\
+                                             self.origin.add(Base.Vector(xoffset,y,zoffset)),\
+                                             ZNorm).extrude(Base.Vector(0,0,self.Thickness)))
+            y += self.FingerWidth*2
+        self.wall = panel
+    def CutZYfingers(self,*,startz=0,endz=0,yoffset=0,xoffset=0):
+        z = startz
+        YNorm=Base.Vector(0,1,0)
+        panel = self.wall
+        while z <= endz:
+            panel = panel.cut(Part.makePlane(self.FingerWidth,\
+                                             self.Thickness,\
+                                             self.origin.add(Base.Vector(xoffset,yoffset,z)),\
+                                             YNorm).extrude(Base.Vector(0,self.Thickness,0)))
+            z += self.FingerWidth*2
+        self.wall = panel
+    def Cut(self,otherWall):
+        self.wall = self.wall.cut(otherWall.wall)
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
         obj = doc.addObject("Part::Feature",self.name)
         obj.Shape = self.wall
         obj.Label=self.name
-        obj.ViewObject.ShapeColor=self.__Color
+        obj.ViewObject.ShapeColor=self.Color
 
 
+
+class FrontWall(BirchPanel):
+    __leftProtrudeOrig = Base.Vector(0,0,0)
+    __leftProtrudeWidth = (-213.16818237304688) - (-293.39385986328125)
+    __wallHeight = 200.30540466308594-(-18.670610427856445)
+    __leftProtrudeWindows = [Base.Vector(-263.86346435546875-(-293.39385986328125),0,
+                                          0.8360995054244995-(-18.670610427856445)),
+                             Base.Vector(-263.86346435546875-(-293.39385986328125),0,
+                                          106.11219024658203-(-18.670610427856445))]
+    __protrudeOffsetWidth = (162.4363250732422-115.00755310058594)+(.125*25.4)
+    __mainWallWidth = (156.03421020507812-(-213.4210205078125))+(.125*25.4)
+    __mainWallWindows=[Base.Vector(-171.88763427734375-(-213.4210205078125)+(.125*25.4),0,
+                                   0.8360995054244995-(-18.670610427856445)),
+                       Base.Vector(-171.88763427734375-(-213.4210205078125)+(.125*25.4),0,
+                                    106.11219024658203-(-18.670610427856445)),
+                       Base.Vector(-96.6558609008789-(-213.4210205078125)+(.125*25.4),0,
+                                   0.8360995054244995-(-18.670610427856445)),
+                       Base.Vector(-96.6558609008789-(-213.4210205078125)+(.125*25.4),0,
+                                    106.11219024658203-(-18.670610427856445)),
+                       Base.Vector(71.09040832519531-(-213.4210205078125)+(.125*25.4),0,
+                                    106.11219024658203-(-18.670610427856445)),
+                       Base.Vector(101.06707763671875-(-213.4210205078125)+(.125*25.4),0,
+                                    106.11219024658203-(-18.670610427856445))
+                      ]
+    def __init__(self,name,origin):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        self.leftProtrude = WallPanel(name + "_LeftProtrude",
+                             self.origin.add(self.__leftProtrudeOrig),
+                             self.__leftProtrudeWidth, 
+                             self.__wallHeight,
+                             windows=self.__leftProtrudeWindows)
+        self.leftProtrude.CutZYfingers(endz=self.__wallHeight)
+        self.leftProtrude.CutZYfingers(
+                    xoffset=self.__leftProtrudeWidth-self.Thickness,
+                    endz=self.__wallHeight)
+        protrudeOffsetOrigin = self.origin.add(
+                    self.__leftProtrudeOrig.add(Base.Vector(
+                                        self.__leftProtrudeWidth-self.Thickness,0,0)))
+        self.protrudeOffset = WallPanel(name + "_ProtrudeOffset",
+                                        protrudeOffsetOrigin,
+                                        self.__protrudeOffsetWidth,
+                                        self.__wallHeight,
+                                        side='Right')
+        self.protrudeOffset.Cut(self.leftProtrude)
+        mainWallOrigin = protrudeOffsetOrigin.add(Base.Vector(0,(self.__protrudeOffsetWidth-self.Thickness),0))
+        self.mainWall = WallPanel(name + "_MainWall",
+                                  mainWallOrigin,
+                                  self.__mainWallWidth,
+                                  self.__wallHeight,
+                                  windows=self.__mainWallWindows)
+        self.mainWall.CutZYfingers(endz=self.__wallHeight)
+        self.protrudeOffset.Cut(self.mainWall)
+        self.mainWall.CutZYfingers(xoffset=self.__mainWallWidth-self.Thickness,
+                                   endz=self.__wallHeight)
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        self.leftProtrude.show(doc)
+        self.protrudeOffset.show(doc)
+        self.mainWall.show(doc)
 
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
     doc = App.newDocument("AddamsFamilyHouse")
-    LeftProtrude = WallPanel("LeftProtrude",
-                             Base.Vector(0,0,0),
-                             (-213.16818237304688) - (-293.39385986328125), 
-                             200.30540466308594-(-18.670610427856445),
-                             [Base.Vector(-263.86346435546875-(-293.39385986328125),0,
-                                          0.8360995054244995-(-18.670610427856445)),
-                              Base.Vector(-263.86346435546875-(-293.39385986328125),0,
-                                          106.11219024658203-(-18.670610427856445))])
-    LeftProtrude.show(doc)
+    frontWall = FrontWall("FrontWall",Base.Vector(0,0,0))
+    frontWall.show(doc)
+    Gui.activeDocument().activeView().viewFront()
+    Gui.SendMsgToActiveView("ViewFit")
