@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250606.1459>
+#  Last Modified : <250607.1637>
 #
 #  Description	
 #
@@ -170,8 +170,11 @@ class WallPanel(BirchPanel):
                                    Base.Vector(1,0,0)).extrude(extrude)
         else:
             raise RuntimeError("unsuported side!")
+        self.windows = list()
         for org in windows:
-            panel = LargeArchWindow(origin.add(org),side).Cut(panel)
+            w = LargeArchWindow(origin.add(org),side)
+            panel = w.Cut(panel)
+            self.windows.append(w)
         self.wall = panel
     def CutXZfingers(self,*,startx=0,endx=0,zoffset=0,yoffset=0):
         x = startx
@@ -216,7 +219,177 @@ class WallPanel(BirchPanel):
         obj.Label=self.name
         obj.ViewObject.ShapeColor=self.Color
 
-
+class EntryWayAndDoor(object):
+    __baseDepth = 183.25379943847656-115.00755310058594
+    __baseWidth = 48.76459503173828*2
+    __baseHeight = 2.797820568084717-(-18.654172897338867)
+    __stepsXOffset = 48.76459503173828-38.98531723022461
+    __stepsWidth = 38.98531723022461*2
+    __stepsDepths= [183.25379943847656-150.29324340820312,
+                    183.25379943847656-158.53338623046875,
+                    183.25379943847656-166.77352905273438,
+                    183.25379943847656-175.01365661621094]
+    __stepsZOffset=[-2.572909116744995-(-18.654172897338867),
+                    -7.933324813842773-(-18.654172897338867),
+                    -13.293740272521973-(-18.654172897338867),
+                    -18.654155731201172-(-18.654172897338867)]
+    __frontIndentWidth = (-40.49898910522461)-(-47.277015686035156)
+    __frontIndentHeight = (1.3102514743804932)-(-17.166584014892578)
+    __frontIndentXOffset = -47.277015686035156-(-48.76459503173828)
+    __frontIndentZOffset = (-17.166584014892578)-(-18.654163360595703)
+    __frontIndentDepth = 183.253799438476-182.65151977539062
+    __frontCoverRoundRadius=.34346008300782
+    __frontCoverThickness = .34346008300782*2
+    __frontCoverWidth = (-39.0117073059082) - (-49.463340759277344)
+    __frontCoverLength = 183.9518737792-115.007431030273
+    __entrywayColor=(.7, .7, .7)
+    def __makeFrontCover(self,frontCoverOrigin):
+        frontCover = Part.makePlane(self.__frontCoverWidth,
+                                    self.__frontCoverLength,
+                                    frontCoverOrigin,
+                                    Base.Vector(0,0,1)
+                                    ).extrude(Base.Vector(
+                                               0,0,self.__frontCoverThickness))
+        round1 = Part.makeCircle(self.__frontCoverRoundRadius,
+                                 frontCoverOrigin.add(
+                              Base.Vector(0,-self.__frontCoverRoundRadius
+                                          ,self.__frontCoverRoundRadius)),
+                                 Base.Vector(0,-1,0))
+        round1 = Part.Face(Part.Wire(round1)
+                ).extrude(Base.Vector(0,self.__frontCoverLength + 
+                                        self.__frontCoverRoundRadius,0))
+        miter1 = Part.makePlane(self.__frontCoverThickness,
+                                self.__frontCoverThickness,
+                                frontCoverOrigin.add(
+                                    Base.Vector(-self.__frontCoverRoundRadius,
+                                                -self.__frontCoverRoundRadius,
+                                                self.__frontCoverThickness)),
+                                 Base.Vector(1,1,0)).extrude(Base.Vector(
+                                            self.__frontCoverThickness,
+                                            self.__frontCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.miter = miter1
+        frontCover = frontCover.fuse(round1)
+        round1 = Part.makeCircle(self.__frontCoverRoundRadius,
+                                 frontCoverOrigin.add(
+                              Base.Vector(-self.__frontCoverRoundRadius,0
+                                          ,self.__frontCoverRoundRadius)),
+                                 Base.Vector(1,0,0))
+        round1 = Part.Face(Part.Wire(round1)
+                ).extrude(Base.Vector(self.__frontCoverWidth + 
+                                        self.__frontCoverRoundRadius*2,0,0))
+        miter1 = Part.makePlane(self.__frontCoverThickness,
+                                self.__frontCoverThickness,
+                                frontCoverOrigin.add(
+                                    Base.Vector(self.__frontCoverRoundRadius,
+                                                self.__frontCoverRoundRadius,
+                                                self.__frontCoverThickness)),
+                                 Base.Vector(-1,-1,0)).extrude(Base.Vector(
+                                            -self.__frontCoverThickness,
+                                            -self.__frontCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.miter = miter1
+        #self.round = round1
+        miter1 = Part.makePlane(self.__frontCoverThickness,
+                                self.__frontCoverThickness,
+                                frontCoverOrigin.add(
+                                    Base.Vector(self.__frontCoverWidth+
+                                                self.__frontCoverRoundRadius,
+                                                -self.__frontCoverRoundRadius,
+                                                self.__frontCoverThickness)),
+                                 Base.Vector(-1,1,0)).extrude(Base.Vector(
+                                            -self.__frontCoverThickness,
+                                            self.__frontCoverThickness,0))
+        #self.miter = miter1
+        round1 = round1.cut(miter1)
+        frontCover = frontCover.fuse(round1)
+        round1 = Part.makeCircle(self.__frontCoverRoundRadius,
+                                 frontCoverOrigin.add(
+                              Base.Vector(self.__frontCoverWidth,
+                                          -self.__frontCoverRoundRadius
+                                          ,self.__frontCoverRoundRadius)),
+                                 Base.Vector(0,-1,0))
+        round1 = Part.Face(Part.Wire(round1)
+                ).extrude(Base.Vector(0,self.__frontCoverLength + 
+                                        self.__frontCoverRoundRadius,0))
+        miter1 = Part.makePlane(self.__frontCoverThickness,
+                                self.__frontCoverThickness,
+                                frontCoverOrigin.add(
+                                    Base.Vector(self.__frontCoverWidth+
+                                                self.__frontCoverRoundRadius,
+                                                -self.__frontCoverRoundRadius,
+                                                self.__frontCoverThickness)),
+                                 Base.Vector(-1,-1,0)).extrude(Base.Vector(
+                                            -self.__frontCoverThickness,
+                                            -self.__frontCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.round = round1
+        #self.miter = miter1
+        frontCover = frontCover.fuse(round1)
+        return frontCover
+    def __init__(self,name,origin):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        base = Part.makePlane(self.__baseWidth,self.__baseDepth,
+                              origin.add(Base.Vector(0,-self.__baseDepth,0)),
+                              Base.Vector(0,0,1)).extrude(
+                                        Base.Vector(0,0,self.__baseHeight))
+        for sd,sz in zip(self.__stepsDepths,self.__stepsZOffset):
+            stepcut = Part.makePlane(self.__stepsWidth,sd,
+                                     origin.add(Base.Vector(
+                                                self.__stepsXOffset,
+                                                -self.__baseDepth,
+                                                sz)),
+                                     Base.Vector(0,0,1)).extrude(
+                                        Base.Vector(0,0,self.__baseHeight-sz))
+            base = base.cut(stepcut)
+        frontIndent = Part.makePlane(self.__frontIndentHeight,
+                                     self.__frontIndentWidth,
+                                     origin.add(Base.Vector(
+                                            self.__frontIndentXOffset,
+                                            -self.__baseDepth,
+                                            self.__frontIndentZOffset)),
+                                     Base.Vector(0,1,0)
+                         ).extrude(Base.Vector(0,self.__frontIndentDepth,0))
+        base = base.cut(frontIndent)
+        frontIndent = Part.makePlane(self.__frontIndentHeight,
+                                     self.__frontIndentWidth,
+                                     origin.add(Base.Vector(
+                                            self.__baseWidth -
+                                                (self.__frontIndentXOffset+
+                                                 self.__frontIndentWidth),
+                                            -self.__baseDepth,
+                                            self.__frontIndentZOffset)),
+                                     Base.Vector(0,1,0)
+                         ).extrude(Base.Vector(0,self.__frontIndentDepth,0))
+        base = base.cut(frontIndent)
+        sidewidth = (self.__baseWidth-self.__stepsWidth)/2
+        
+        frontCoverOrigin = origin.add(
+            Base.Vector(-((self.__frontCoverWidth-sidewidth)/2),
+                        -self.__frontCoverLength,
+                        self.__baseHeight))
+        frontCover = self.__makeFrontCover(frontCoverOrigin)
+        
+        base = base.fuse(frontCover)
+        self.entryway = base
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name+"_entryway")
+        obj.Shape = self.entryway
+        obj.Label=self.name+"_entryway"
+        obj.ViewObject.ShapeColor=self.__entrywayColor
+        #obj = doc.addObject("Part::Feature",self.name+"_miter")
+        #obj.Shape = self.miter
+        #obj.Label=self.name+"_miter"
+        #obj.ViewObject.ShapeColor=(1.0, 0.0, 0.0)
+        #obj = doc.addObject("Part::Feature",self.name+"_round")
+        #obj.Shape = self.round
+        #obj.Label=self.name+"_round"
+        #obj.ViewObject.ShapeColor=(0.0, 1.0, 0.0)
 
 class FrontWall(BirchPanel):
     __leftProtrudeOrig = Base.Vector(0,0,0)
@@ -241,6 +414,7 @@ class FrontWall(BirchPanel):
                        Base.Vector(101.06707763671875-(-213.4210205078125)+(.125*25.4),0,
                                     106.11219024658203-(-18.670610427856445))
                       ]
+    __entrywayXOffset = -48.76459503173828-(-213.16818237304688)
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -274,13 +448,18 @@ class FrontWall(BirchPanel):
         self.protrudeOffset.Cut(self.mainWall)
         self.mainWall.CutZYfingers(xoffset=self.__mainWallWidth-self.Thickness,
                                    endz=self.__wallHeight)
+        entrywayOrigin = mainWallOrigin.add(Base.Vector(self.__entrywayXOffset,
+                                                        0,0))
+        self.entryway = EntryWayAndDoor(name + "_EntryWay",
+                                        entrywayOrigin)
+                                        
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
         self.leftProtrude.show(doc)
         self.protrudeOffset.show(doc)
         self.mainWall.show(doc)
-
+        self.entryway.show(doc)
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")

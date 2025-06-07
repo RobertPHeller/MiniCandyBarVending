@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 16:19:56 2025
-#  Last Modified : <250606.1418>
+#  Last Modified : <250607.1431>
 #
 #  Description	
 #
@@ -145,8 +145,14 @@ def pointNearXZ(mesh,x,z):
 def pointNearXYZ(mesh,x,y,z):
     topo=mesh.Topology
     points, triangles = topo 
-    result = list()
+    nearpoint=Base.Vector(x,y,z)
+    dist=None
+    result=None
     for p in points:
-        if Near(p.x,x-2,x+2) and Near(p.y,y-2,y+2) and Near(p.z,z-2,z+2):
-            result.append(p)
+        if dist == None:
+            dist = nearpoint.distanceToPoint(p)
+            result = p
+        elif nearpoint.distanceToPoint(p) < dist:
+            dist = nearpoint.distanceToPoint(p)
+            result = p
     return result
