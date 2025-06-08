@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250608.0921>
+#  Last Modified : <250608.1245>
 #
 #  Description	
 #
@@ -242,16 +242,26 @@ class EntryWayAndDoor(object):
     __frontCoverThickness = .34346008300782*2
     __frontCoverWidth = (-39.0117073059082) - (-49.463340759277344)
     __frontCoverLength = 183.9518737792-115.007431030273
-    __collumBaseWidth = 16.088188171386718
-    __collumBaseDepth = 16.08079528808592
-    __collumBaseHeight = 14.0555922985076906 
-    __collumCenterY = 134.2124481201172 - 115.00755310058594 + \
+    __columBaseWidth = 16.088188171386718
+    __columBaseDepth = 16.08079528808592
+    __columBaseHeight = 14.0555922985076906 
+    __columCenterY = 134.2124481201172 - 115.00755310058594 + \
                         ((150.29324340820312-134.2124481201172)/2)
-    __collumBaseCoverThickness = 1.689676284790038
-    __collumBaseCoverRoundRadius=1.689676284790038/2
-    __collumBaseCoverWidth=16.933029174804678
-    __collumBaseCoverDepth=16.92539978027340
-    
+    __columBaseCoverThickness = 1.689676284790038
+    __columBaseCoverRoundRadius=1.689676284790038/2
+    __columBaseCoverWidth=16.933029174804678
+    __columBaseCoverDepth=16.92539978027340
+    __columBaseRadius = 5.95060729980468
+    __columTopRadius  = 5.95060729980468 - 1.61177062988282
+    __columHeight = 77.13805389404297 - 18.537721633911133
+    __columnC1Radius = (5.95060729980468 - 1.61177062988282)+.39648437500006
+    __columnC1Height = 1.00946044921875
+    __columnC2Radius = (5.95060729980468 - 1.61177062988282)+.39648437500006 +\
+                        .54496765136719
+    __columnC2Height = 2.83856964111328
+    __columnC3Radius = (5.95060729980468 - 1.61177062988282)+.39648437500006 +\
+                        .54496765136719 + 1.96015930175781
+    __columnC3Height = 3.67766571044922
     __entrywayColor=(.7, .7, .7)
     def __init__(self,name,origin):
         self.name = name
@@ -306,187 +316,221 @@ class EntryWayAndDoor(object):
                         self.__baseHeight))
         frontCover = self.__makeFrontCover(frontCoverOrigin)
         base = base.fuse(frontCover)
-        collumCenterOrigin = origin.add(Base.Vector(self.__collumBaseWidth/2,
-                                                    -self.__collumCenterY,
+        columCenterOrigin = origin.add(Base.Vector(self.__columBaseWidth/2,
+                                                    -self.__columCenterY,
                                                     self.__baseHeight))
-        collumnWithBase = self.__makeCollumnWithBase(collumCenterOrigin)
-        base = base.fuse(collumnWithBase)
-        collumCenterOrigin = origin.add(Base.Vector(self.__baseWidth-
-                                                    self.__collumBaseWidth/2,
-                                                    -self.__collumCenterY,
+        columnWithBase = self.__makecolumnWithBase(columCenterOrigin)
+        base = base.fuse(columnWithBase)
+        columCenterOrigin = origin.add(Base.Vector(self.__baseWidth-
+                                                    self.__columBaseWidth/2,
+                                                    -self.__columCenterY,
                                                     self.__baseHeight))
-        collumnWithBase = self.__makeCollumnWithBase(collumCenterOrigin)
-        base = base.fuse(collumnWithBase)
-
+        columnWithBase = self.__makecolumnWithBase(columCenterOrigin)
+        base = base.fuse(columnWithBase)
         self.entryway = base
-    def __makeCollumnWithBase(self,collumCenterOrigin):
-        baseOrigin = collumCenterOrigin.add(
-                Base.Vector(-(self.__collumBaseWidth/2),
-                            -(self.__collumBaseDepth/2),0))
-        collumnWithBase = Part.makePlane(self.__collumBaseWidth,
-                                         self.__collumBaseDepth,
+    def __makecolumnWithBase(self,columCenterOrigin):
+        baseOrigin = columCenterOrigin.add(
+                Base.Vector(-(self.__columBaseWidth/2),
+                            -(self.__columBaseDepth/2),0))
+        columnWithBase = Part.makePlane(self.__columBaseWidth,
+                                         self.__columBaseDepth,
                                          baseOrigin,
                                          Base.Vector(0,0,1)).extrude(
                                             Base.Vector(0,0,
-                                                    self.__collumBaseHeight))
-        collumBaseCover = self.__makeColumnBaseCover(baseOrigin.add(
-                                            Base.Vector(-(self.__collumBaseCoverWidth-self.__collumBaseWidth)/2,
-                                                        -(self.__collumBaseCoverDepth-self.__collumBaseDepth)/2,
-                                                        self.__collumBaseHeight)))
+                                                    self.__columBaseHeight))
+        columBaseCover = self.__makeColumnBaseCover(baseOrigin.add(
+                                            Base.Vector(-(self.__columBaseCoverWidth-self.__columBaseWidth)/2,
+                                                        -(self.__columBaseCoverDepth-self.__columBaseDepth)/2,
+                                                        self.__columBaseHeight)))
 
-        collumnWithBase = collumnWithBase.fuse(collumBaseCover)
-        return collumnWithBase
-    def __makeColumnBaseCover(self,collumBaseCoverOrigin):
-        collumBaseCover = Part.makePlane(self.__collumBaseCoverWidth,
-                                         self.__collumBaseCoverDepth,
-                                         collumBaseCoverOrigin,
+        columnWithBase = columnWithBase.fuse(columBaseCover)
+        column = Part.makeCone(self.__columBaseRadius,
+                               self.__columTopRadius,
+                               self.__columHeight,
+                               columCenterOrigin.add(
+                                Base.Vector(0,0,self.__columBaseHeight+
+                                                self.__columBaseCoverThickness)))
+        columnWithBase = columnWithBase.fuse(column)
+        c1 = Part.makeCircle(self.__columnC1Radius,
+                             columCenterOrigin.add(
+                                Base.Vector(0,0,self.__columBaseHeight+
+                                                self.__columBaseCoverThickness+
+                                                self.__columHeight)))
+        c1 = Part.Face(Part.Wire(c1)).extrude(
+                                Base.Vector(0,0,self.__columnC1Height))
+        columnWithBase = columnWithBase.fuse(c1)
+        c2 = Part.makeCircle(self.__columnC2Radius,
+                             columCenterOrigin.add(
+                                Base.Vector(0,0,self.__columBaseHeight+
+                                                self.__columBaseCoverThickness+
+                                                self.__columHeight+
+                                                self.__columnC1Height
+                                                )))
+        c2 = Part.Face(Part.Wire(c2)).extrude(
+                            Base.Vector(0,0,self.__columnC2Height))
+        columnWithBase = columnWithBase.fuse(c2)
+        c3 = Part.makeCircle(self.__columnC3Radius,
+                             columCenterOrigin.add(
+                                Base.Vector(0,0,self.__columBaseHeight+
+                                                self.__columBaseCoverThickness+
+                                                self.__columHeight+
+                                                self.__columnC1Height+
+                                                self.__columnC2Height)))
+        c3 = Part.Face(Part.Wire(c3)).extrude(
+                                Base.Vector(0,0,self.__columnC3Height))
+        columnWithBase = columnWithBase.fuse(c3)
+        return columnWithBase
+    def __makeColumnBaseCover(self,columBaseCoverOrigin):
+        columBaseCover = Part.makePlane(self.__columBaseCoverWidth,
+                                         self.__columBaseCoverDepth,
+                                         columBaseCoverOrigin,
                                          Base.Vector(0,0,1)).extrude(
                                             Base.Vector(0,0,
-                                                    self.__collumBaseCoverThickness))
-        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
-                        collumBaseCoverOrigin.add(
+                                                    self.__columBaseCoverThickness))
+        round1 = Part.makeCircle(self.__columBaseCoverRoundRadius,
+                        columBaseCoverOrigin.add(
                              Base.Vector(0,
-                                         -self.__collumBaseCoverRoundRadius,
-                                         self.__collumBaseCoverRoundRadius)),
+                                         -self.__columBaseCoverRoundRadius,
+                                         self.__columBaseCoverRoundRadius)),
                         Base.Vector(0,-1,0))
         round1 = Part.Face(Part.Wire(round1)
-                     ).extrude(Base.Vector(0,self.__collumBaseCoverDepth+
-                                             (self.__collumBaseCoverRoundRadius*2),
+                     ).extrude(Base.Vector(0,self.__columBaseCoverDepth+
+                                             (self.__columBaseCoverRoundRadius*2),
                                              0))
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(-self.__collumBaseCoverRoundRadius,
-                                                -self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverThickness)),
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(-self.__columBaseCoverRoundRadius,
+                                                -self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverThickness)),
                                 Base.Vector(1,1,0)).extrude(Base.Vector(
-                                    self.__collumBaseCoverThickness,
-                                    self.__collumBaseCoverThickness,0))
+                                    self.__columBaseCoverThickness,
+                                    self.__columBaseCoverThickness,0))
         #self.round = round1
         round1 = round1.cut(miter1)
         #self.miter = miter1
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(-self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverDepth+
-                                                self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverThickness)),
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(-self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverDepth+
+                                                self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverThickness)),
                                 Base.Vector(1,1,0)).extrude(Base.Vector(
-                                    self.__collumBaseCoverThickness,
-                                    self.__collumBaseCoverThickness,0))
+                                    self.__columBaseCoverThickness,
+                                    self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
         #self.round = round1
         #self.miter = miter1
-        collumBaseCover = collumBaseCover.fuse(round1)
-        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
-                                 collumBaseCoverOrigin.add(
-                              Base.Vector(-self.__collumBaseCoverRoundRadius,0
-                                          ,self.__collumBaseCoverRoundRadius)),
+        columBaseCover = columBaseCover.fuse(round1)
+        round1 = Part.makeCircle(self.__columBaseCoverRoundRadius,
+                                 columBaseCoverOrigin.add(
+                              Base.Vector(-self.__columBaseCoverRoundRadius,0
+                                          ,self.__columBaseCoverRoundRadius)),
                                  Base.Vector(1,0,0))
         round1 = Part.Face(Part.Wire(round1)
-                ).extrude(Base.Vector(self.__collumBaseCoverWidth + 
-                                        self.__collumBaseCoverRoundRadius*2,0,0))
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverThickness)),
+                ).extrude(Base.Vector(self.__columBaseCoverWidth + 
+                                        self.__columBaseCoverRoundRadius*2,0,0))
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverThickness)),
                                  Base.Vector(-1,-1,0)).extrude(Base.Vector(
-                                            -self.__collumBaseCoverThickness,
-                                            -self.__collumBaseCoverThickness,0))
+                                            -self.__columBaseCoverThickness,
+                                            -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
         #self.miter = miter1
         #self.round = round1
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(self.__collumBaseCoverWidth+
-                                                self.__collumBaseCoverRoundRadius,
-                                                -self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverThickness)),
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(self.__columBaseCoverWidth+
+                                                self.__columBaseCoverRoundRadius,
+                                                -self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverThickness)),
                                  Base.Vector(-1,1,0)).extrude(Base.Vector(
-                                            -self.__collumBaseCoverThickness,
-                                            self.__collumBaseCoverThickness,0))
+                                            -self.__columBaseCoverThickness,
+                                            self.__columBaseCoverThickness,0))
         #self.miter = miter1
         round1 = round1.cut(miter1)
-        collumBaseCover = collumBaseCover.fuse(round1)
-        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
-                                 collumBaseCoverOrigin.add(
-                              Base.Vector(self.__collumBaseCoverWidth,
-                                          -self.__collumBaseCoverRoundRadius
-                                          ,self.__collumBaseCoverRoundRadius)),
+        columBaseCover = columBaseCover.fuse(round1)
+        round1 = Part.makeCircle(self.__columBaseCoverRoundRadius,
+                                 columBaseCoverOrigin.add(
+                              Base.Vector(self.__columBaseCoverWidth,
+                                          -self.__columBaseCoverRoundRadius
+                                          ,self.__columBaseCoverRoundRadius)),
                                  Base.Vector(0,-1,0))
         round1 = Part.Face(Part.Wire(round1)
-                ).extrude(Base.Vector(0,self.__collumBaseCoverDepth + 
-                                        self.__collumBaseCoverThickness,0))
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(self.__collumBaseCoverWidth+
-                                                self.__collumBaseCoverRoundRadius,
-                                                -self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverThickness)),
+                ).extrude(Base.Vector(0,self.__columBaseCoverDepth + 
+                                        self.__columBaseCoverThickness,0))
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(self.__columBaseCoverWidth+
+                                                self.__columBaseCoverRoundRadius,
+                                                -self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverThickness)),
                                  Base.Vector(-1,-1,0)).extrude(Base.Vector(
-                                            -self.__collumBaseCoverThickness,
-                                            -self.__collumBaseCoverThickness,0))
+                                            -self.__columBaseCoverThickness,
+                                            -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
         #self.round = round1
         #self.miter = miter1
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(self.__collumBaseCoverWidth+
-                                                self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverDepth+
-                                                self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverThickness)),
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(self.__columBaseCoverWidth+
+                                                self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverDepth+
+                                                self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverThickness)),
                                  Base.Vector(-1,-1,0)).extrude(Base.Vector(
-                                            -self.__collumBaseCoverThickness,
-                                            -self.__collumBaseCoverThickness,0))
+                                            -self.__columBaseCoverThickness,
+                                            -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
         #self.round = round1
         #self.miter = miter1
-        collumBaseCover = collumBaseCover.fuse(round1)
-        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
-                                 collumBaseCoverOrigin.add(
-                              Base.Vector(-self.__collumBaseCoverRoundRadius,
-                                          self.__collumBaseCoverDepth,
-                                          self.__collumBaseCoverRoundRadius)),
+        columBaseCover = columBaseCover.fuse(round1)
+        round1 = Part.makeCircle(self.__columBaseCoverRoundRadius,
+                                 columBaseCoverOrigin.add(
+                              Base.Vector(-self.__columBaseCoverRoundRadius,
+                                          self.__columBaseCoverDepth,
+                                          self.__columBaseCoverRoundRadius)),
                                  Base.Vector(1,0,0))
         round1 = Part.Face(Part.Wire(round1)
-                ).extrude(Base.Vector(self.__collumBaseCoverWidth + 
-                                        self.__collumBaseCoverRoundRadius*2,0,0))
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(-self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverDepth+
-                                                self.__collumBaseCoverRoundRadius,
-                                                self.__collumBaseCoverThickness)),
+                ).extrude(Base.Vector(self.__columBaseCoverWidth + 
+                                        self.__columBaseCoverRoundRadius*2,0,0))
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(-self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverDepth+
+                                                self.__columBaseCoverRoundRadius,
+                                                self.__columBaseCoverThickness)),
                                  Base.Vector(1,-1,0)).extrude(Base.Vector(
-                                            self.__collumBaseCoverThickness,
-                                            -self.__collumBaseCoverThickness,0))
+                                            self.__columBaseCoverThickness,
+                                            -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
         #self.miter = miter1
         #self.round = round1
-        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
-                                self.__collumBaseCoverThickness,
-                                collumBaseCoverOrigin.add(
-                                    Base.Vector(self.__collumBaseCoverWidth+
-                                                self.__collumBaseCoverThickness*1.45,
-                                                self.__collumBaseCoverDepth,
-                                                self.__collumBaseCoverThickness)),
+        miter1 = Part.makePlane(self.__columBaseCoverThickness,
+                                self.__columBaseCoverThickness,
+                                columBaseCoverOrigin.add(
+                                    Base.Vector(self.__columBaseCoverWidth+
+                                                self.__columBaseCoverThickness*1.45,
+                                                self.__columBaseCoverDepth,
+                                                self.__columBaseCoverThickness)),
                                  Base.Vector(-1,-1,0)).extrude(Base.Vector(
-                                            -self.__collumBaseCoverThickness,
-                                            -self.__collumBaseCoverThickness,0))
+                                            -self.__columBaseCoverThickness,
+                                            -self.__columBaseCoverThickness,0))
         #self.miter = miter1
         round1 = round1.cut(miter1)
         #self.round = round1
-        collumBaseCover = collumBaseCover.fuse(round1)
+        columBaseCover = columBaseCover.fuse(round1)
 
-        return collumBaseCover
+        return columBaseCover
     def __makeFrontCover(self,frontCoverOrigin):
         frontCover = Part.makePlane(self.__frontCoverWidth,
                                     self.__frontCoverLength,
