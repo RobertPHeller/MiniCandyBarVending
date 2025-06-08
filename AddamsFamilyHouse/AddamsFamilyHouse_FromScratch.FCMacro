@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250607.2034>
+#  Last Modified : <250608.0921>
 #
 #  Description	
 #
@@ -329,17 +329,164 @@ class EntryWayAndDoor(object):
                                          Base.Vector(0,0,1)).extrude(
                                             Base.Vector(0,0,
                                                     self.__collumBaseHeight))
-        collumBaseCover = Part.makePlane(self.__collumBaseCoverWidth,
-                                         self.__collumBaseCoverDepth,
-                                         baseOrigin.add(
+        collumBaseCover = self.__makeColumnBaseCover(baseOrigin.add(
                                             Base.Vector(-(self.__collumBaseCoverWidth-self.__collumBaseWidth)/2,
                                                         -(self.__collumBaseCoverDepth-self.__collumBaseDepth)/2,
-                                                        self.__collumBaseHeight)),
+                                                        self.__collumBaseHeight)))
+
+        collumnWithBase = collumnWithBase.fuse(collumBaseCover)
+        return collumnWithBase
+    def __makeColumnBaseCover(self,collumBaseCoverOrigin):
+        collumBaseCover = Part.makePlane(self.__collumBaseCoverWidth,
+                                         self.__collumBaseCoverDepth,
+                                         collumBaseCoverOrigin,
                                          Base.Vector(0,0,1)).extrude(
                                             Base.Vector(0,0,
                                                     self.__collumBaseCoverThickness))
-        collumnWithBase = collumnWithBase.fuse(collumBaseCover)
-        return collumnWithBase
+        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
+                        collumBaseCoverOrigin.add(
+                             Base.Vector(0,
+                                         -self.__collumBaseCoverRoundRadius,
+                                         self.__collumBaseCoverRoundRadius)),
+                        Base.Vector(0,-1,0))
+        round1 = Part.Face(Part.Wire(round1)
+                     ).extrude(Base.Vector(0,self.__collumBaseCoverDepth+
+                                             (self.__collumBaseCoverRoundRadius*2),
+                                             0))
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(-self.__collumBaseCoverRoundRadius,
+                                                -self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverThickness)),
+                                Base.Vector(1,1,0)).extrude(Base.Vector(
+                                    self.__collumBaseCoverThickness,
+                                    self.__collumBaseCoverThickness,0))
+        #self.round = round1
+        round1 = round1.cut(miter1)
+        #self.miter = miter1
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(-self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverDepth+
+                                                self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverThickness)),
+                                Base.Vector(1,1,0)).extrude(Base.Vector(
+                                    self.__collumBaseCoverThickness,
+                                    self.__collumBaseCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.round = round1
+        #self.miter = miter1
+        collumBaseCover = collumBaseCover.fuse(round1)
+        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
+                                 collumBaseCoverOrigin.add(
+                              Base.Vector(-self.__collumBaseCoverRoundRadius,0
+                                          ,self.__collumBaseCoverRoundRadius)),
+                                 Base.Vector(1,0,0))
+        round1 = Part.Face(Part.Wire(round1)
+                ).extrude(Base.Vector(self.__collumBaseCoverWidth + 
+                                        self.__collumBaseCoverRoundRadius*2,0,0))
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverThickness)),
+                                 Base.Vector(-1,-1,0)).extrude(Base.Vector(
+                                            -self.__collumBaseCoverThickness,
+                                            -self.__collumBaseCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.miter = miter1
+        #self.round = round1
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(self.__collumBaseCoverWidth+
+                                                self.__collumBaseCoverRoundRadius,
+                                                -self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverThickness)),
+                                 Base.Vector(-1,1,0)).extrude(Base.Vector(
+                                            -self.__collumBaseCoverThickness,
+                                            self.__collumBaseCoverThickness,0))
+        #self.miter = miter1
+        round1 = round1.cut(miter1)
+        collumBaseCover = collumBaseCover.fuse(round1)
+        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
+                                 collumBaseCoverOrigin.add(
+                              Base.Vector(self.__collumBaseCoverWidth,
+                                          -self.__collumBaseCoverRoundRadius
+                                          ,self.__collumBaseCoverRoundRadius)),
+                                 Base.Vector(0,-1,0))
+        round1 = Part.Face(Part.Wire(round1)
+                ).extrude(Base.Vector(0,self.__collumBaseCoverDepth + 
+                                        self.__collumBaseCoverThickness,0))
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(self.__collumBaseCoverWidth+
+                                                self.__collumBaseCoverRoundRadius,
+                                                -self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverThickness)),
+                                 Base.Vector(-1,-1,0)).extrude(Base.Vector(
+                                            -self.__collumBaseCoverThickness,
+                                            -self.__collumBaseCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.round = round1
+        #self.miter = miter1
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(self.__collumBaseCoverWidth+
+                                                self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverDepth+
+                                                self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverThickness)),
+                                 Base.Vector(-1,-1,0)).extrude(Base.Vector(
+                                            -self.__collumBaseCoverThickness,
+                                            -self.__collumBaseCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.round = round1
+        #self.miter = miter1
+        collumBaseCover = collumBaseCover.fuse(round1)
+        round1 = Part.makeCircle(self.__collumBaseCoverRoundRadius,
+                                 collumBaseCoverOrigin.add(
+                              Base.Vector(-self.__collumBaseCoverRoundRadius,
+                                          self.__collumBaseCoverDepth,
+                                          self.__collumBaseCoverRoundRadius)),
+                                 Base.Vector(1,0,0))
+        round1 = Part.Face(Part.Wire(round1)
+                ).extrude(Base.Vector(self.__collumBaseCoverWidth + 
+                                        self.__collumBaseCoverRoundRadius*2,0,0))
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(-self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverDepth+
+                                                self.__collumBaseCoverRoundRadius,
+                                                self.__collumBaseCoverThickness)),
+                                 Base.Vector(1,-1,0)).extrude(Base.Vector(
+                                            self.__collumBaseCoverThickness,
+                                            -self.__collumBaseCoverThickness,0))
+        round1 = round1.cut(miter1)
+        #self.miter = miter1
+        #self.round = round1
+        miter1 = Part.makePlane(self.__collumBaseCoverThickness,
+                                self.__collumBaseCoverThickness,
+                                collumBaseCoverOrigin.add(
+                                    Base.Vector(self.__collumBaseCoverWidth+
+                                                self.__collumBaseCoverThickness*1.45,
+                                                self.__collumBaseCoverDepth,
+                                                self.__collumBaseCoverThickness)),
+                                 Base.Vector(-1,-1,0)).extrude(Base.Vector(
+                                            -self.__collumBaseCoverThickness,
+                                            -self.__collumBaseCoverThickness,0))
+        #self.miter = miter1
+        round1 = round1.cut(miter1)
+        #self.round = round1
+        collumBaseCover = collumBaseCover.fuse(round1)
+
+        return collumBaseCover
     def __makeFrontCover(self,frontCoverOrigin):
         frontCover = Part.makePlane(self.__frontCoverWidth,
                                     self.__frontCoverLength,
@@ -431,14 +578,20 @@ class EntryWayAndDoor(object):
         obj.Shape = self.entryway
         obj.Label=self.name+"_entryway"
         obj.ViewObject.ShapeColor=self.__entrywayColor
-        #obj = doc.addObject("Part::Feature",self.name+"_miter")
-        #obj.Shape = self.miter
-        #obj.Label=self.name+"_miter"
-        #obj.ViewObject.ShapeColor=(1.0, 0.0, 0.0)
-        #obj = doc.addObject("Part::Feature",self.name+"_round")
-        #obj.Shape = self.round
-        #obj.Label=self.name+"_round"
-        #obj.ViewObject.ShapeColor=(0.0, 1.0, 0.0)
+        try:
+            obj = doc.addObject("Part::Feature",self.name+"_miter")
+            obj.Shape = self.miter
+            obj.Label=self.name+"_miter"
+            obj.ViewObject.ShapeColor=(1.0, 0.0, 0.0)
+        except AttributeError:
+            obj.Document.removeObject(self.name+"_miter")
+        try:
+            obj = doc.addObject("Part::Feature",self.name+"_round")
+            obj.Shape = self.round
+            obj.Label=self.name+"_round"
+            obj.ViewObject.ShapeColor=(0.0, 1.0, 0.0)
+        except AttributeError:
+            obj.Document.removeObject(self.name+"_round")
 
 class FrontWall(BirchPanel):
     __leftProtrudeOrig = Base.Vector(0,0,0)
