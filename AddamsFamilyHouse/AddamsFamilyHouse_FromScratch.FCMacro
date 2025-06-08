@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250608.1245>
+#  Last Modified : <250608.1555>
 #
 #  Description	
 #
@@ -50,7 +50,6 @@ import sys
 sys.path.append(os.path.dirname(__file__))
 import time
 from PySide.QtCore import QCoreApplication, QEventLoop, QTimer
-
 def execute(loop, ms):
     timer = QTimer()
     timer.setSingleShot(True)
@@ -262,7 +261,23 @@ class EntryWayAndDoor(object):
     __columnC3Radius = (5.95060729980468 - 1.61177062988282)+.39648437500006 +\
                         .54496765136719 + 1.96015930175781
     __columnC3Height = 3.67766571044922
-    __entrywayColor=(.7, .7, .7)
+    __backWallXOff = -39.0117073059082 - (-48.76459503173828)
+    __backWallDepth = 124.75366973876953-115.00755310058594
+    __backWallWidth = 38.98501968383789 - (-39.0117073059082)
+    __backWallHeight = 16.08079528808592+1.689676284790038+\
+                       (77.13805389404297 - 18.537721633911133)+\
+                       1.00946044921875+2.83856964111328+3.67766571044922
+    __outerDoorWayXOffset = -18.049304962158203 - (-48.76459503173828)
+    __outerDoorWayZOffset = 7.670636177062988 - (-18.654172897338867)
+    __outerDoorWayMinorRadius = 18
+    __outerDoorWayMajorRadius = 24.2
+    __outerDoorWayBottomRectHeight = 44.8
+    __outerDoorWayBottomRectWidth  = 36
+    __outerDoorWayDepth = (124.75366973876953-115.00755310058594)+10
+    __entrywayRoofDepth = 162.4363250732422-115.00755310058594
+    __entrywayRoofHeight = 88.55018615722656-84.65019226074219
+    __entrywayRoofZOffset = 84.65019226074219-(-18.654172897338867)
+    __entrywayColor=(.7,.7, .7)
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -316,17 +331,58 @@ class EntryWayAndDoor(object):
                         self.__baseHeight))
         frontCover = self.__makeFrontCover(frontCoverOrigin)
         base = base.fuse(frontCover)
-        columCenterOrigin = origin.add(Base.Vector(self.__columBaseWidth/2,
-                                                    -self.__columCenterY,
-                                                    self.__baseHeight))
-        columnWithBase = self.__makecolumnWithBase(columCenterOrigin)
-        base = base.fuse(columnWithBase)
-        columCenterOrigin = origin.add(Base.Vector(self.__baseWidth-
+        columCenterOrigin = origin.add(Base.Vector(self.__stepsXOffset+
                                                     self.__columBaseWidth/2,
                                                     -self.__columCenterY,
                                                     self.__baseHeight))
         columnWithBase = self.__makecolumnWithBase(columCenterOrigin)
         base = base.fuse(columnWithBase)
+        columCenterOrigin = origin.add(Base.Vector(self.__baseWidth-
+                                                    self.__stepsXOffset-
+                                                    self.__columBaseWidth/2,
+                                                    -self.__columCenterY,
+                                                    self.__baseHeight))
+        columnWithBase = self.__makecolumnWithBase(columCenterOrigin)
+        base = base.fuse(columnWithBase)
+        backwall = Part.makePlane(self.__backWallWidth,
+                                  self.__backWallDepth,
+                                  origin.add(Base.Vector(self.__backWallXOff,
+                                                         -self.__backWallDepth,
+                                                         self.__baseHeight))
+                                  ).extrude(Base.Vector(0,0,self.__backWallHeight))
+        outerDoorWayTunnelOrigin = origin.add(Base.Vector(
+                    self.__outerDoorWayXOffset,0,self.__outerDoorWayZOffset))
+        outerDoorWayTunnelArchOrig = outerDoorWayTunnelOrigin.add(
+                            Base.Vector(self.__outerDoorWayMinorRadius,0,
+                                        self.__outerDoorWayBottomRectHeight))
+        outerDoorWayTunnelMajor = outerDoorWayTunnelArchOrig.add(
+                            Base.Vector(0,0,self.__outerDoorWayMajorRadius))
+        outerDoorWayTunnelMinor = outerDoorWayTunnelArchOrig.add(
+                            Base.Vector(-self.__outerDoorWayMinorRadius,0,0))
+        outerDoorWayTunnelExtrude = Base.Vector(0,-self.__outerDoorWayDepth,0)
+        outerDoorWayTunnelEllipse=Part.Ellipse(
+                    outerDoorWayTunnelMajor,
+                    outerDoorWayTunnelMinor,
+                    outerDoorWayTunnelArchOrig)
+        outerDoorWayTunnelWire = Part.Wire(outerDoorWayTunnelEllipse.toShape())
+        outerDoorWayTunnelFace = Part.Face(outerDoorWayTunnelWire)
+        outerDoorWayTunnelArch = outerDoorWayTunnelFace.extrude(outerDoorWayTunnelExtrude)
+        outerDoorWayTunnelBase = Part.makePlane(self.__outerDoorWayBottomRectHeight,
+                                                self.__outerDoorWayBottomRectWidth,
+                                                outerDoorWayTunnelOrigin,
+                                                Base.Vector(0,1,0)
+                                                ).extrude(outerDoorWayTunnelExtrude)
+                                                
+        self.outerDoorWayTunnel =  outerDoorWayTunnelBase.fuse(outerDoorWayTunnelArch)
+        backwall = backwall.cut(self.outerDoorWayTunnel)
+        base = base.fuse(backwall)
+        roof = Part.makePlane(self.__baseWidth,self.__entrywayRoofDepth,
+                              origin.add(
+                                    Base.Vector(0,
+                                                -self.__entrywayRoofDepth, 
+                                                self.__entrywayRoofZOffset))
+                              ).extrude(Base.Vector(0,0,self.__entrywayRoofHeight))
+        base = base.fuse(roof)
         self.entryway = base
     def __makecolumnWithBase(self,columCenterOrigin):
         baseOrigin = columCenterOrigin.add(
