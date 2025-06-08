@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250607.1637>
+#  Last Modified : <250607.2034>
 #
 #  Description	
 #
@@ -242,7 +242,104 @@ class EntryWayAndDoor(object):
     __frontCoverThickness = .34346008300782*2
     __frontCoverWidth = (-39.0117073059082) - (-49.463340759277344)
     __frontCoverLength = 183.9518737792-115.007431030273
+    __collumBaseWidth = 16.088188171386718
+    __collumBaseDepth = 16.08079528808592
+    __collumBaseHeight = 14.0555922985076906 
+    __collumCenterY = 134.2124481201172 - 115.00755310058594 + \
+                        ((150.29324340820312-134.2124481201172)/2)
+    __collumBaseCoverThickness = 1.689676284790038
+    __collumBaseCoverRoundRadius=1.689676284790038/2
+    __collumBaseCoverWidth=16.933029174804678
+    __collumBaseCoverDepth=16.92539978027340
+    
     __entrywayColor=(.7, .7, .7)
+    def __init__(self,name,origin):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        base = Part.makePlane(self.__baseWidth,self.__baseDepth,
+                              origin.add(Base.Vector(0,-self.__baseDepth,0)),
+                              Base.Vector(0,0,1)).extrude(
+                                        Base.Vector(0,0,self.__baseHeight))
+        for sd,sz in zip(self.__stepsDepths,self.__stepsZOffset):
+            stepcut = Part.makePlane(self.__stepsWidth,sd,
+                                     origin.add(Base.Vector(
+                                                self.__stepsXOffset,
+                                                -self.__baseDepth,
+                                                sz)),
+                                     Base.Vector(0,0,1)).extrude(
+                                        Base.Vector(0,0,self.__baseHeight-sz))
+            base = base.cut(stepcut)
+        frontIndent = Part.makePlane(self.__frontIndentHeight,
+                                     self.__frontIndentWidth,
+                                     origin.add(Base.Vector(
+                                            self.__frontIndentXOffset,
+                                            -self.__baseDepth,
+                                            self.__frontIndentZOffset)),
+                                     Base.Vector(0,1,0)
+                         ).extrude(Base.Vector(0,self.__frontIndentDepth,0))
+        base = base.cut(frontIndent)
+        frontIndent = Part.makePlane(self.__frontIndentHeight,
+                                     self.__frontIndentWidth,
+                                     origin.add(Base.Vector(
+                                            self.__baseWidth -
+                                                (self.__frontIndentXOffset+
+                                                 self.__frontIndentWidth),
+                                            -self.__baseDepth,
+                                            self.__frontIndentZOffset)),
+                                     Base.Vector(0,1,0)
+                         ).extrude(Base.Vector(0,self.__frontIndentDepth,0))
+        base = base.cut(frontIndent)
+        sidewidth = (self.__baseWidth-self.__stepsWidth)/2
+        
+        frontCoverOrigin = origin.add(
+            Base.Vector(-((self.__frontCoverWidth-sidewidth)/2),
+                        -self.__frontCoverLength,
+                        self.__baseHeight))
+        frontCover = self.__makeFrontCover(frontCoverOrigin)
+        base = base.fuse(frontCover)
+        frontCoverOrigin = origin.add(
+            Base.Vector(self.__baseWidth-sidewidth
+                        -((self.__frontCoverWidth-sidewidth)/2),
+                        -self.__frontCoverLength,
+                        self.__baseHeight))
+        frontCover = self.__makeFrontCover(frontCoverOrigin)
+        base = base.fuse(frontCover)
+        collumCenterOrigin = origin.add(Base.Vector(self.__collumBaseWidth/2,
+                                                    -self.__collumCenterY,
+                                                    self.__baseHeight))
+        collumnWithBase = self.__makeCollumnWithBase(collumCenterOrigin)
+        base = base.fuse(collumnWithBase)
+        collumCenterOrigin = origin.add(Base.Vector(self.__baseWidth-
+                                                    self.__collumBaseWidth/2,
+                                                    -self.__collumCenterY,
+                                                    self.__baseHeight))
+        collumnWithBase = self.__makeCollumnWithBase(collumCenterOrigin)
+        base = base.fuse(collumnWithBase)
+
+        self.entryway = base
+    def __makeCollumnWithBase(self,collumCenterOrigin):
+        baseOrigin = collumCenterOrigin.add(
+                Base.Vector(-(self.__collumBaseWidth/2),
+                            -(self.__collumBaseDepth/2),0))
+        collumnWithBase = Part.makePlane(self.__collumBaseWidth,
+                                         self.__collumBaseDepth,
+                                         baseOrigin,
+                                         Base.Vector(0,0,1)).extrude(
+                                            Base.Vector(0,0,
+                                                    self.__collumBaseHeight))
+        collumBaseCover = Part.makePlane(self.__collumBaseCoverWidth,
+                                         self.__collumBaseCoverDepth,
+                                         baseOrigin.add(
+                                            Base.Vector(-(self.__collumBaseCoverWidth-self.__collumBaseWidth)/2,
+                                                        -(self.__collumBaseCoverDepth-self.__collumBaseDepth)/2,
+                                                        self.__collumBaseHeight)),
+                                         Base.Vector(0,0,1)).extrude(
+                                            Base.Vector(0,0,
+                                                    self.__collumBaseCoverThickness))
+        collumnWithBase = collumnWithBase.fuse(collumBaseCover)
+        return collumnWithBase
     def __makeFrontCover(self,frontCoverOrigin):
         frontCover = Part.makePlane(self.__frontCoverWidth,
                                     self.__frontCoverLength,
@@ -327,54 +424,6 @@ class EntryWayAndDoor(object):
         #self.miter = miter1
         frontCover = frontCover.fuse(round1)
         return frontCover
-    def __init__(self,name,origin):
-        self.name = name
-        if not isinstance(origin,Base.Vector):
-            raise RuntimeError("origin is not a Vector!")
-        self.origin = origin
-        base = Part.makePlane(self.__baseWidth,self.__baseDepth,
-                              origin.add(Base.Vector(0,-self.__baseDepth,0)),
-                              Base.Vector(0,0,1)).extrude(
-                                        Base.Vector(0,0,self.__baseHeight))
-        for sd,sz in zip(self.__stepsDepths,self.__stepsZOffset):
-            stepcut = Part.makePlane(self.__stepsWidth,sd,
-                                     origin.add(Base.Vector(
-                                                self.__stepsXOffset,
-                                                -self.__baseDepth,
-                                                sz)),
-                                     Base.Vector(0,0,1)).extrude(
-                                        Base.Vector(0,0,self.__baseHeight-sz))
-            base = base.cut(stepcut)
-        frontIndent = Part.makePlane(self.__frontIndentHeight,
-                                     self.__frontIndentWidth,
-                                     origin.add(Base.Vector(
-                                            self.__frontIndentXOffset,
-                                            -self.__baseDepth,
-                                            self.__frontIndentZOffset)),
-                                     Base.Vector(0,1,0)
-                         ).extrude(Base.Vector(0,self.__frontIndentDepth,0))
-        base = base.cut(frontIndent)
-        frontIndent = Part.makePlane(self.__frontIndentHeight,
-                                     self.__frontIndentWidth,
-                                     origin.add(Base.Vector(
-                                            self.__baseWidth -
-                                                (self.__frontIndentXOffset+
-                                                 self.__frontIndentWidth),
-                                            -self.__baseDepth,
-                                            self.__frontIndentZOffset)),
-                                     Base.Vector(0,1,0)
-                         ).extrude(Base.Vector(0,self.__frontIndentDepth,0))
-        base = base.cut(frontIndent)
-        sidewidth = (self.__baseWidth-self.__stepsWidth)/2
-        
-        frontCoverOrigin = origin.add(
-            Base.Vector(-((self.__frontCoverWidth-sidewidth)/2),
-                        -self.__frontCoverLength,
-                        self.__baseHeight))
-        frontCover = self.__makeFrontCover(frontCoverOrigin)
-        
-        base = base.fuse(frontCover)
-        self.entryway = base
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
