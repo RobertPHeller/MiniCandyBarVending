@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250608.2042>
+#  Last Modified : <250609.0828>
 #
 #  Description	
 #
@@ -289,6 +289,10 @@ class EntryWayAndDoor(object):
     __doorInnerTunnelBottomRectWidth = 21.04060935974121*2
     __doorThickness = (1.0/16.0)*25.4
     __doorClearance = .5
+    __doorHingeBlock1Z = 12.5
+    __doorHingeBlock2Z = 44.432012557983395-(12.5*1.5)
+    __doorHingeBlockH  = 12.5*.5
+    __doorHingeBlockPinR = .5
     __entrywayRoofDepth = 162.4363250732422-115.00755310058594
     __entrywayRoofHeight = 88.55018615722656-84.65019226074219
     __entrywayRoofZOffset = 84.65019226074219-(-18.654172897338867)
@@ -330,6 +334,7 @@ class EntryWayAndDoor(object):
                                 ).extrude(doorExtrude)
         #self.round = slicer
         rightDoor = bothDoors.cut(slicer)
+        rightDoor = self.__addHinges(rightDoor,'Right')
         self.rightDoor = rightDoor
         slicer = Part.makePlane(self.__doorInnerTunnelBottomRectHeight*2,
                                 (self.__doorInnerTunnelBottomRectWidth/2),
@@ -340,7 +345,137 @@ class EntryWayAndDoor(object):
                                 ).extrude(doorExtrude)
         #self.miter = slicer
         leftDoor = bothDoors.cut(slicer)
+        leftDoor = self.__addHinges(leftDoor,'Left')
         self.leftDoor = leftDoor
+    def __addHinges(self,door,side):
+        doorYOffset = self.__doorTunnelDepth - self.__doorThickness
+        if side=='Right':
+            hingeBlock1Origin = self.origin.add(
+                Base.Vector(self.__doorInnerTunnelXOffset+
+                            self.__doorInnerTunnelBottomRectWidth-
+                            self.__doorClearance,
+                            doorYOffset,
+                            self.__doorInnerTunnelZOffset+
+                            self.__doorClearance+
+                            self.__doorHingeBlock1Z))
+            hingeBlock2Origin = self.origin.add(
+                Base.Vector(self.__doorInnerTunnelXOffset+
+                            self.__doorInnerTunnelBottomRectWidth-
+                            self.__doorClearance,
+                            doorYOffset,
+                            self.__doorInnerTunnelZOffset+
+                            self.__doorClearance+
+                            self.__doorHingeBlock2Z))
+            CylinderOffset=Base.Vector(self.__doorThickness*2,
+                                       self.__doorThickness/2,0)
+            CutOffset     =Base.Vector(0,0,0)
+            blockoffset   =Base.Vector(0,0,0)
+            pinblockoffset = -self.__doorThickness*2
+        elif side=='Left':
+            hingeBlock1Origin = self.origin.add(
+                Base.Vector(self.__doorInnerTunnelXOffset+
+                            self.__doorClearance,
+                            doorYOffset,
+                            self.__doorInnerTunnelZOffset+
+                            self.__doorClearance+
+                            self.__doorHingeBlock1Z))
+            hingeBlock2Origin = self.origin.add(
+                Base.Vector(self.__doorInnerTunnelXOffset+
+                            self.__doorClearance,
+                            doorYOffset,
+                            self.__doorInnerTunnelZOffset+
+                            self.__doorClearance+
+                            self.__doorHingeBlock2Z))
+            CylinderOffset=Base.Vector(-self.__doorThickness*2,
+                                       self.__doorThickness/2,0)
+            CutOffset     =Base.Vector(-self.__doorThickness*2.5,0,0)
+            blockoffset   =Base.Vector(-self.__doorThickness*2,0,0)
+            pinblockoffset = 0
+        else:
+            raise RuntimeError("unsupported side: %s"%(side))
+        cut=Part.makePlane(self.__doorThickness*2.5,
+                           self.__doorThickness,
+                           hingeBlock1Origin.add(CutOffset)).extrude(
+                                    Base.Vector(0,0,self.__doorHingeBlockH))
+        self.entryway = self.entryway.cut(cut)
+        Cylinder = Part.Face(Part.Wire(
+                    Part.makeCircle(self.__doorThickness/2,
+                                    hingeBlock1Origin.add(CylinderOffset)
+                                    ))).extrude(
+                                       Base.Vector(0,0,self.__doorHingeBlockH))
+        hblock = Part.makePlane(self.__doorThickness*2,
+                                self.__doorThickness,
+                                hingeBlock1Origin.add(blockoffset)).extrude(
+                                        Base.Vector(0,0,self.__doorHingeBlockH))
+        door = door.fuse(hblock).fuse(Cylinder)
+        pin = Part.Face(Part.Wire(
+                Part.makeCircle(self.__doorHingeBlockPinR,
+                        hingeBlock1Origin.add(CylinderOffset).add(
+                            Base.Vector(0,0,-self.__doorClearance))
+                            ))).extrude(
+                                  Base.Vector(0,0,self.__doorHingeBlockH+
+                                                (2*self.__doorClearance)))
+        door = door.fuse(pin)
+        pin1= Part.Face(Part.Wire(
+                Part.makeCircle(self.__doorHingeBlockPinR*1.2,
+                        hingeBlock1Origin.add(CylinderOffset).add(
+                            Base.Vector(0,0,-self.__doorClearance))
+                            ))).extrude(
+                                  Base.Vector(0,0,self.__doorHingeBlockH+
+                                                (2*self.__doorClearance)))
+        block1=Part.makePlane(self.__doorThickness*2,
+                              self.__doorHingeBlockPinR*2.4,
+                              hingeBlock1Origin.add(CylinderOffset).add(
+                                  Base.Vector(pinblockoffset,
+                                              -self.__doorHingeBlockPinR*1.2,
+                                              -self.__doorClearance))
+                              ).extrude(
+                                    Base.Vector(0,0,self.__doorHingeBlockH+
+                                                (2*self.__doorClearance)))
+        self.entryway = self.entryway.cut(block1.fuse(pin1))
+        
+        cut=Part.makePlane(self.__doorThickness*2.5,
+                           self.__doorThickness,
+                           hingeBlock2Origin.add(CutOffset)).extrude(
+                                    Base.Vector(0,0,self.__doorHingeBlockH))
+        self.entryway = self.entryway.cut(cut)
+        Cylinder = Part.Face(Part.Wire(
+                    Part.makeCircle(self.__doorThickness/2,
+                                    hingeBlock2Origin.add(CylinderOffset)
+                                    ))).extrude(
+                                       Base.Vector(0,0,self.__doorHingeBlockH))
+        hblock = Part.makePlane(self.__doorThickness*2,
+                                self.__doorThickness,
+                                hingeBlock2Origin.add(blockoffset)).extrude(
+                                        Base.Vector(0,0,self.__doorHingeBlockH))
+        door = door.fuse(hblock).fuse(Cylinder)
+        pin = Part.Face(Part.Wire(
+                Part.makeCircle(self.__doorHingeBlockPinR,
+                        hingeBlock2Origin.add(CylinderOffset).add(
+                            Base.Vector(0,0,-self.__doorClearance))
+                            ))).extrude(
+                                  Base.Vector(0,0,self.__doorHingeBlockH+
+                                                (2*self.__doorClearance)))
+        door = door.fuse(pin)
+        pin1= Part.Face(Part.Wire(
+                Part.makeCircle(self.__doorHingeBlockPinR*1.2,
+                        hingeBlock2Origin.add(CylinderOffset).add(
+                            Base.Vector(0,0,-self.__doorClearance))
+                            ))).extrude(
+                                  Base.Vector(0,0,self.__doorHingeBlockH+
+                                                (2*self.__doorClearance)))
+        block1=Part.makePlane(self.__doorThickness*2,
+                              self.__doorHingeBlockPinR*2.4,
+                              hingeBlock2Origin.add(CylinderOffset).add(
+                                  Base.Vector(pinblockoffset,
+                                              -self.__doorHingeBlockPinR*1.2,
+                                              -self.__doorClearance))
+                              ).extrude(
+                                    Base.Vector(0,0,self.__doorHingeBlockH+
+                                                (2*self.__doorClearance)))
+        self.entryway = self.entryway.cut(block1.fuse(pin1))
+                           
+        return door
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
