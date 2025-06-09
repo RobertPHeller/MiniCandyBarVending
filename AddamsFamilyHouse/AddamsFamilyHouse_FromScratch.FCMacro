@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250609.0902>
+#  Last Modified : <250609.1456>
 #
 #  Description	
 #
@@ -295,10 +295,21 @@ class EntryWayAndDoor(object):
     __doorHingeBlockPinR = .5
     __doorPullWidth = (1/8)*25.4
     __doorPullThickness = (1.0/16.0)*25.4 
-    __doorPullWireHoleR = (1/32)*25.4
+    __doorPullWireHoleR = (1/64)*25.4
     __entrywayRoofDepth = 162.4363250732422-115.00755310058594
     __entrywayRoofHeight = 88.55018615722656-84.65019226074219
     __entrywayRoofZOffset = 84.65019226074219-(-18.654172897338867)
+    __lightCenterX = 0 - (-48.76459503173828)
+    __lightCenterY = 115.00755310058594 - \
+                        ((149.23240661621094+137.95774841308594)/2)
+    __lightBaseRadius = 11.27465820312500/2
+    __lightBaseHeight = 84.72457885742188 - 80.42092895507812
+    __lightDrop = 80.42092895507812-70.61669921875
+    __lightGlobeRadius = (70.61669921875-62.1161003112793)/2
+    __lightHoleRadius = (1/16)*25.4
+    __lightBaseColor = (139/255, 117/255,   0.0)
+    __lightWireColor = (0.25, 0.0, 0.0)
+    __lightGlobeColor = (1.0, 1.0, 1.0)
     __entrywayColor=(.7,.7, .7)
     __doorColor=(139/255, 35/255, 35/255)
     def __makeDoors(self):
@@ -682,6 +693,38 @@ class EntryWayAndDoor(object):
         base = base.fuse(roof)
         self.entryway = base
         self.__makeDoors()
+        lightFixtureOrigin = origin.add(Base.Vector(self.__lightCenterX,
+                                                    self.__lightCenterY,
+                                                    self.__entrywayRoofZOffset))
+        lightWireHole=Part.Face(Part.Wire(
+            Part.makeCircle(self.__lightHoleRadius,
+                            lightFixtureOrigin))).extrude(
+                                Base.Vector(0,0,self.__entrywayRoofHeight))
+        self.entryway = self.entryway.cut(lightWireHole)
+        lightWireHole=Part.Face(Part.Wire(
+            Part.makeCircle(self.__lightHoleRadius,
+                            lightFixtureOrigin))).extrude(
+                                Base.Vector(0,0,-(self.__lightBaseHeight+
+                                                  self.__lightDrop+
+                                                  self.__lightGlobeRadius)))
+        self.lightBase = Part.makeCone(self.__lightBaseRadius,
+                                       0.0,
+                                       self.__lightBaseHeight,
+                                       lightFixtureOrigin,
+                                       Base.Vector(0,0,-1))
+        self.lightBase = self.lightBase.cut(lightWireHole)
+        self.lightWire = Part.Face(Part.Wire(
+            Part.makeCircle(self.__lightHoleRadius/2,
+                            lightFixtureOrigin))).extrude(
+                                Base.Vector(0,0,-(self.__lightBaseHeight+
+                                                  self.__lightDrop+
+                                                  self.__lightGlobeRadius)))
+        lightGlobeOrigin = lightFixtureOrigin.add(
+                Base.Vector(0,0,-(self.__lightBaseHeight+
+                                  self.__lightDrop+
+                                  self.__lightGlobeRadius)))
+        self.lightGlobe = Part.makeSphere(self.__lightGlobeRadius,
+                                            lightGlobeOrigin)
     def CutDoorTunnelFromPanel(self,panel):
         return panel.cut(self.doorOuterTunnel)
     def __makecolumnWithBase(self,columCenterOrigin):
@@ -986,6 +1029,18 @@ class EntryWayAndDoor(object):
         obj.Shape = self.leftDoor
         obj.Label=self.name+"_leftdoor"
         obj.ViewObject.ShapeColor=self.__doorColor
+        obj = doc.addObject("Part::Feature",self.name+"_lightBase")
+        obj.Shape = self.lightBase
+        obj.Label=self.name+"_lightBase"
+        obj.ViewObject.ShapeColor=self.__lightBaseColor
+        obj = doc.addObject("Part::Feature",self.name+"_lightWire")
+        obj.Shape = self.lightWire
+        obj.Label=self.name+"_lightWire"
+        obj.ViewObject.ShapeColor=self.__lightWireColor
+        obj = doc.addObject("Part::Feature",self.name+"_lightGlobe")
+        obj.Shape = self.lightGlobe
+        obj.Label=self.name+"_lightGlobe"
+        obj.ViewObject.ShapeColor=self.__lightGlobeColor
         try:
             obj = doc.addObject("Part::Feature",self.name+"_miter")
             obj.Shape = self.miter
