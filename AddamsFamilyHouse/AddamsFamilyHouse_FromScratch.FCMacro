@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250608.1555>
+#  Last Modified : <250608.2042>
 #
 #  Description	
 #
@@ -274,10 +274,73 @@ class EntryWayAndDoor(object):
     __outerDoorWayBottomRectHeight = 44.8
     __outerDoorWayBottomRectWidth  = 36
     __outerDoorWayDepth = (124.75366973876953-115.00755310058594)+10
+    __doorOuterTunnelXOffset = -25.897098541259766 - (-48.76459503173828)
+    __doorOuterTunnelZOffset = 7.670637130737305 - (-18.654172897338867)
+    __doorOuterTunnelMinorRadius = 25.897098541259766
+    __doorOuterTunnelMajorRadius = 26.862136840820306
+    __doorOuterTunnelBottomRectHeight = 52.690696716308594-7.670637130737305
+    __doorOuterTunnelBottomRectWidth = 25.897098541259766*2
+    __doorTunnelDepth = 115.00755310058594-101.24455261230469
+    __doorInnerTunnelXOffset = -21.04060935974121 - (-48.76459503173828)
+    __doorInnerTunnelZOffset = 7.670637130737305 - (-18.654172897338867)
+    __doorInnerTunnelMinorRadius = 21.04060935974121
+    __doorInnerTunnelMajorRadius = 22.0741081237793
+    __doorInnerTunnelBottomRectHeight = 52.6026496887207-7.670637130737305
+    __doorInnerTunnelBottomRectWidth = 21.04060935974121*2
+    __doorThickness = (1.0/16.0)*25.4
+    __doorClearance = .5
     __entrywayRoofDepth = 162.4363250732422-115.00755310058594
     __entrywayRoofHeight = 88.55018615722656-84.65019226074219
     __entrywayRoofZOffset = 84.65019226074219-(-18.654172897338867)
     __entrywayColor=(.7,.7, .7)
+    __doorColor=(139/255, 35/255, 35/255)
+    def __makeDoors(self):
+        doorYOffset = self.__doorTunnelDepth - self.__doorThickness
+        doorOrigin = self.origin.add(Base.Vector(
+                self.__doorInnerTunnelXOffset+self.__doorClearance,
+                doorYOffset,
+                self.__doorInnerTunnelZOffset+self.__doorClearance))
+        doorArchOrig = doorOrigin.add(Base.Vector(
+                self.__doorInnerTunnelMinorRadius-self.__doorClearance,0,
+                self.__doorInnerTunnelBottomRectHeight-self.__doorClearance))
+        doorMajor = doorArchOrig.add(
+                Base.Vector(0,0,self.__doorInnerTunnelMajorRadius-
+                                self.__doorClearance))
+        doorMinor = doorArchOrig.add(
+                Base.Vector((-self.__doorInnerTunnelMinorRadius)+
+                            self.__doorClearance,0,0))
+        doorExtrude  = Base.Vector(0,self.__doorThickness,0)
+        doorEllipse=Part.Ellipse(doorMajor,doorMinor,doorArchOrig)
+        doorWire = Part.Wire(doorEllipse.toShape())
+        doorFace = Part.Face(doorWire)
+        doorArch = doorFace.extrude(doorExtrude)
+        doorBase = Part.makePlane(self.__doorInnerTunnelBottomRectHeight-
+                                    self.__doorClearance,
+                                  self.__doorInnerTunnelBottomRectWidth-
+                                    (self.__doorClearance*2),
+                                  doorOrigin,
+                                  Base.Vector(0,1,0)
+                                  ).extrude(doorExtrude)
+        bothDoors = doorBase.fuse(doorArch)
+        slicer = Part.makePlane(self.__doorInnerTunnelBottomRectHeight*2,
+                                (self.__doorInnerTunnelBottomRectWidth/2)+
+                                self.__doorClearance,
+                                doorOrigin,
+                                Base.Vector(0,1,0)
+                                ).extrude(doorExtrude)
+        #self.round = slicer
+        rightDoor = bothDoors.cut(slicer)
+        self.rightDoor = rightDoor
+        slicer = Part.makePlane(self.__doorInnerTunnelBottomRectHeight*2,
+                                (self.__doorInnerTunnelBottomRectWidth/2),
+                                doorOrigin.add(
+                        Base.Vector((self.__doorInnerTunnelBottomRectWidth/2)-
+                                    self.__doorClearance,0,0)),
+                                Base.Vector(0,1,0)
+                                ).extrude(doorExtrude)
+        #self.miter = slicer
+        leftDoor = bothDoors.cut(slicer)
+        self.leftDoor = leftDoor
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -375,15 +438,72 @@ class EntryWayAndDoor(object):
                                                 
         self.outerDoorWayTunnel =  outerDoorWayTunnelBase.fuse(outerDoorWayTunnelArch)
         backwall = backwall.cut(self.outerDoorWayTunnel)
+        
+        doorOuterTunnelOrig=origin.add(Base.Vector( 
+                self.__doorOuterTunnelXOffset,0,
+                self.__doorOuterTunnelZOffset))
+        doorOuterTunnelArchOrig = doorOuterTunnelOrig.add(Base.Vector(
+                self.__doorOuterTunnelMinorRadius,0,
+                self.__doorOuterTunnelBottomRectHeight))
+        doorOuterTunnelMajor = doorOuterTunnelArchOrig.add(
+                            Base.Vector(0,0,self.__doorOuterTunnelMajorRadius))
+        doorOuterTunnelMinor = doorOuterTunnelArchOrig.add(
+                            Base.Vector(-self.__doorOuterTunnelMinorRadius,0,0))
+        doorOuterTunnelExtrude = Base.Vector(0,self.__doorTunnelDepth,0)
+        doorOuterTunnelEllipse=Part.Ellipse(
+                    doorOuterTunnelMajor,
+                    doorOuterTunnelMinor,
+                    doorOuterTunnelArchOrig)
+        doorOuterTunnelWire = Part.Wire(doorOuterTunnelEllipse.toShape())
+        doorOuterTunnelFace = Part.Face(doorOuterTunnelWire)
+        doorOuterTunnelArch = doorOuterTunnelFace.extrude(doorOuterTunnelExtrude)
+        doorOuterTunnelBase = Part.makePlane(self.__doorOuterTunnelBottomRectHeight,
+                                                self.__doorOuterTunnelBottomRectWidth,
+                                                doorOuterTunnelOrig,
+                                                Base.Vector(0,1,0)
+                                                ).extrude(doorOuterTunnelExtrude)
+                                                
+        self.doorOuterTunnel =  doorOuterTunnelBase.fuse(doorOuterTunnelArch)
+
+        doorInnerTunnelOrig=origin.add(Base.Vector(
+                self.__doorInnerTunnelXOffset,0,
+                self.__doorInnerTunnelZOffset))        
+        doorInnerTunnelArchOrig = doorInnerTunnelOrig.add(Base.Vector(
+                self.__doorInnerTunnelMinorRadius,0,
+                self.__doorInnerTunnelBottomRectHeight))
+        doorInnerTunnelMajor = doorInnerTunnelArchOrig.add(
+                            Base.Vector(0,0,self.__doorInnerTunnelMajorRadius))
+        doorInnerTunnelMinor = doorInnerTunnelArchOrig.add(
+                            Base.Vector(-self.__doorInnerTunnelMinorRadius,0,0))
+        doorInnerTunnelExtrude = Base.Vector(0,self.__doorTunnelDepth,0)
+        doorInnerTunnelEllipse=Part.Ellipse(
+                    doorInnerTunnelMajor,
+                    doorInnerTunnelMinor,
+                    doorInnerTunnelArchOrig)
+        doorInnerTunnelWire = Part.Wire(doorInnerTunnelEllipse.toShape())
+        doorInnerTunnelFace = Part.Face(doorInnerTunnelWire)
+        doorInnerTunnelArch = doorInnerTunnelFace.extrude(doorInnerTunnelExtrude)
+        doorInnerTunnelBase = Part.makePlane(self.__doorInnerTunnelBottomRectHeight,
+                                                self.__doorInnerTunnelBottomRectWidth,
+                                                doorInnerTunnelOrig,
+                                                Base.Vector(0,1,0)
+                                                ).extrude(doorInnerTunnelExtrude)
+                                                
+        self.doorInnerTunnel =  doorInnerTunnelBase.fuse(doorInnerTunnelArch)
+        base = base.fuse(self.doorOuterTunnel.cut(self.doorInnerTunnel))
+
         base = base.fuse(backwall)
-        roof = Part.makePlane(self.__baseWidth,self.__entrywayRoofDepth,
+        roof = Part.makePlane(self.__backWallWidth,self.__entrywayRoofDepth,
                               origin.add(
-                                    Base.Vector(0,
+                                    Base.Vector(self.__backWallXOff,
                                                 -self.__entrywayRoofDepth, 
                                                 self.__entrywayRoofZOffset))
                               ).extrude(Base.Vector(0,0,self.__entrywayRoofHeight))
         base = base.fuse(roof)
         self.entryway = base
+        self.__makeDoors()
+    def CutDoorTunnelFromPanel(self,panel):
+        return panel.cut(self.doorOuterTunnel)
     def __makecolumnWithBase(self,columCenterOrigin):
         baseOrigin = columCenterOrigin.add(
                 Base.Vector(-(self.__columBaseWidth/2),
@@ -678,6 +798,14 @@ class EntryWayAndDoor(object):
         obj.Shape = self.entryway
         obj.Label=self.name+"_entryway"
         obj.ViewObject.ShapeColor=self.__entrywayColor
+        obj = doc.addObject("Part::Feature",self.name+"_rightdoor")
+        obj.Shape = self.rightDoor
+        obj.Label=self.name+"_rightdoor"
+        obj.ViewObject.ShapeColor=self.__doorColor
+        obj = doc.addObject("Part::Feature",self.name+"_leftdoor")
+        obj.Shape = self.leftDoor
+        obj.Label=self.name+"_leftdoor"
+        obj.ViewObject.ShapeColor=self.__doorColor
         try:
             obj = doc.addObject("Part::Feature",self.name+"_miter")
             obj.Shape = self.miter
@@ -692,6 +820,13 @@ class EntryWayAndDoor(object):
             obj.ViewObject.ShapeColor=(0.0, 1.0, 0.0)
         except AttributeError:
             obj.Document.removeObject(self.name+"_round")
+        try:
+            obj = doc.addObject("Part::Feature",self.name+"_doors")
+            obj.Shape = self.bothDoors
+            obj.Label=self.name+"_doors"
+            obj.ViewObject.ShapeColor=(0.0, 0.0, 1.0)
+        except AttributeError:
+            obj.Document.removeObject(self.name+"_doors")
 
 class FrontWall(BirchPanel):
     __leftProtrudeOrig = Base.Vector(0,0,0)
@@ -754,7 +889,7 @@ class FrontWall(BirchPanel):
                                                         0,0))
         self.entryway = EntryWayAndDoor(name + "_EntryWay",
                                         entrywayOrigin)
-                                        
+        self.mainWall.wall = self.entryway.CutDoorTunnelFromPanel(self.mainWall.wall)
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
