@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250609.0828>
+#  Last Modified : <250609.0902>
 #
 #  Description	
 #
@@ -293,6 +293,9 @@ class EntryWayAndDoor(object):
     __doorHingeBlock2Z = 44.432012557983395-(12.5*1.5)
     __doorHingeBlockH  = 12.5*.5
     __doorHingeBlockPinR = .5
+    __doorPullWidth = (1/8)*25.4
+    __doorPullThickness = (1.0/16.0)*25.4 
+    __doorPullWireHoleR = (1/32)*25.4
     __entrywayRoofDepth = 162.4363250732422-115.00755310058594
     __entrywayRoofHeight = 88.55018615722656-84.65019226074219
     __entrywayRoofZOffset = 84.65019226074219-(-18.654172897338867)
@@ -335,6 +338,7 @@ class EntryWayAndDoor(object):
         #self.round = slicer
         rightDoor = bothDoors.cut(slicer)
         rightDoor = self.__addHinges(rightDoor,'Right')
+        rightDoor = self.__addPull(rightDoor,'Right')
         self.rightDoor = rightDoor
         slicer = Part.makePlane(self.__doorInnerTunnelBottomRectHeight*2,
                                 (self.__doorInnerTunnelBottomRectWidth/2),
@@ -346,7 +350,48 @@ class EntryWayAndDoor(object):
         #self.miter = slicer
         leftDoor = bothDoors.cut(slicer)
         leftDoor = self.__addHinges(leftDoor,'Left')
+        leftDoor = self.__addPull(leftDoor,'Left')
         self.leftDoor = leftDoor
+    def __addPull(self,door,side):
+        doorYOffset = self.__doorTunnelDepth
+        if side=='Right':
+            pullBlockOrigin = self.origin.add(
+               Base.Vector(self.__doorInnerTunnelXOffset+
+                           self.__doorClearance*3+
+                           ((self.__doorInnerTunnelBottomRectWidth-
+                             self.__doorClearance)/2),
+                           doorYOffset,
+                           self.__doorInnerTunnelZOffset+
+                           self.__doorClearance+
+                           (self.__doorHingeBlock1Z+
+                            self.__doorHingeBlock2Z)/2))
+        elif side=='Left':
+            pullBlockOrigin = self.origin.add(
+               Base.Vector(self.__doorInnerTunnelXOffset+
+                           ((self.__doorInnerTunnelBottomRectWidth-
+                             self.__doorClearance)/2)-
+                           self.__doorPullWidth,
+                           doorYOffset,
+                           self.__doorInnerTunnelZOffset+
+                           self.__doorClearance+
+                           (self.__doorHingeBlock1Z+
+                            self.__doorHingeBlock2Z)/2))
+        else:
+            raise RuntimeError("unsupported side: %s"%(side))
+        block = Part.makePlane(self.__doorPullWidth,
+                               self.__doorPullWidth,
+                               pullBlockOrigin
+                               ).extrude(
+                                    Base.Vector(0,0,self.__doorPullThickness))
+        wirehole = Part.Face(Part.Wire(
+            Part.makeCircle(self.__doorPullWireHoleR,
+                            pullBlockOrigin.add(
+                                Base.Vector(self.__doorPullWidth/2,
+                                            self.__doorPullWidth/2,
+                                            0))))
+              ).extrude(Base.Vector(0,0,self.__doorPullThickness))
+        block = block.cut(wirehole)        
+        return door.fuse(block)
     def __addHinges(self,door,side):
         doorYOffset = self.__doorTunnelDepth - self.__doorThickness
         if side=='Right':
