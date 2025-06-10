@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250609.1456>
+#  Last Modified : <250610.1007>
 #
 #  Description	
 #
@@ -153,6 +153,7 @@ class WallPanel(BirchPanel):
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
         self.origin = origin
+        self.side = side
         if side == 'Front':
             #print("*** WallPanel(): width = ",width,", height = ",height)
             extrude = Base.Vector(0,self.Thickness,0)
@@ -160,7 +161,7 @@ class WallPanel(BirchPanel):
         elif side == 'Left':
             extrude = Base.Vector(-self.Thickness,0,0)
             panel = Part.makePlane(height,width,
-                                   origin.add(Base.Vector(0,-width,0)),
+                                   origin.add(Base.Vector(self.Thickness,width,height)),
                                    Base.Vector(-1,0,0)).extrude(extrude)
         elif side == 'Right':
             extrude = Base.Vector(self.Thickness,0,0)
@@ -208,6 +209,64 @@ class WallPanel(BirchPanel):
                                              YNorm).extrude(Base.Vector(0,self.Thickness,0)))
             z += self.FingerWidth*2
         self.wall = panel
+    def AddPanel(self,*,xoffset=0,yoffset=0,zoffset=0,width=0,height=0):
+        if self.side == 'Front':
+            extrude = Base.Vector(0,self.Thickness,0)
+            panel = Part.makePlane(height,
+                                   width,
+                                   self.origin.add(Base.Vector(xoffset,
+                                                               yoffset,
+                                                               zoffset)),
+                                   Base.Vector(0,1,0)).extrude(extrude)
+            self.wall = self.wall.fuse(panel)
+        elif self.side == 'Left':
+            extrude = Base.Vector(-self.Thickness,0,0)
+            panel = Part.makePlane(height,
+                                   width,
+                                   self.origin.add(Base.Vector(xoffset+
+                                                               self.Thickness,
+                                                               yoffset,
+                                                               zoffset+
+                                                               height)),
+                                   Base.Vector(-1,0,0)).extrude(extrude)
+            self.wall = self.wall.fuse(panel)
+        elif self.side == 'Right':
+            extrude = Base.Vector(self.Thickness,0,0)
+            panel = Part.makePlane(height,
+                                   width,
+                                   self.origin.add(Base.Vector(xoffset,
+                                                               yoffset,
+                                                               zoffset)),
+                                   Base.Vector(1,0,0)).extrude(extrude)
+            self.wall = self.wall.fuse(panel)
+    def CutPanel(self,*,xoffset=0,yoffset=0,zoffset=0,width=0,height=0):
+        if self.side == 'Front':
+            extrude = Base.Vector(0,self.Thickness,0)
+            panel = Part.makePlane(height,
+                                   width,
+                                   self.origin.add(Base.Vector(xoffset,
+                                                               yoffset,
+                                                               zoffset)),
+                                   Base.Vector(0,1,0)).extrude(extrude)
+            self.wall = self.wall.cut(panel)
+        elif self.side == 'Left':
+            extrude = Base.Vector(-self.Thickness,0,0)
+            panel = Part.makePlane(height,
+                                   width,
+                                   self.origin.add(Base.Vector(xoffset,
+                                                               yoffset,
+                                                               zoffset)),
+                                   Base.Vector(-1,0,0)).extrude(extrude)
+            self.wall = self.wall.cut(panel)
+        elif self.side == 'Right':
+            extrude = Base.Vector(self.Thickness,0,0)
+            panel = Part.makePlane(height,
+                                   width,
+                                   self.origin.add(Base.Vector(xoffset,
+                                                               yoffset,
+                                                               zoffset)),
+                                   Base.Vector(1,0,0)).extrude(extrude)
+            self.wall = self.wall.cut(panel)
     def Cut(self,otherWall):
         self.wall = self.wall.cut(otherWall.wall)
     def show(self,doc=None):
@@ -346,7 +405,6 @@ class EntryWayAndDoor(object):
                                 doorOrigin,
                                 Base.Vector(0,1,0)
                                 ).extrude(doorExtrude)
-        #self.round = slicer
         rightDoor = bothDoors.cut(slicer)
         rightDoor = self.__addHinges(rightDoor,'Right')
         rightDoor = self.__addPull(rightDoor,'Right')
@@ -358,7 +416,6 @@ class EntryWayAndDoor(object):
                                     self.__doorClearance,0,0)),
                                 Base.Vector(0,1,0)
                                 ).extrude(doorExtrude)
-        #self.miter = slicer
         leftDoor = bothDoors.cut(slicer)
         leftDoor = self.__addHinges(leftDoor,'Left')
         leftDoor = self.__addPull(leftDoor,'Left')
@@ -805,9 +862,7 @@ class EntryWayAndDoor(object):
                                 Base.Vector(1,1,0)).extrude(Base.Vector(
                                     self.__columBaseCoverThickness,
                                     self.__columBaseCoverThickness,0))
-        #self.round = round1
         round1 = round1.cut(miter1)
-        #self.miter = miter1
         miter1 = Part.makePlane(self.__columBaseCoverThickness,
                                 self.__columBaseCoverThickness,
                                 columBaseCoverOrigin.add(
@@ -819,8 +874,6 @@ class EntryWayAndDoor(object):
                                     self.__columBaseCoverThickness,
                                     self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.round = round1
-        #self.miter = miter1
         columBaseCover = columBaseCover.fuse(round1)
         round1 = Part.makeCircle(self.__columBaseCoverRoundRadius,
                                  columBaseCoverOrigin.add(
@@ -840,8 +893,6 @@ class EntryWayAndDoor(object):
                                             -self.__columBaseCoverThickness,
                                             -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.miter = miter1
-        #self.round = round1
         miter1 = Part.makePlane(self.__columBaseCoverThickness,
                                 self.__columBaseCoverThickness,
                                 columBaseCoverOrigin.add(
@@ -852,7 +903,6 @@ class EntryWayAndDoor(object):
                                  Base.Vector(-1,1,0)).extrude(Base.Vector(
                                             -self.__columBaseCoverThickness,
                                             self.__columBaseCoverThickness,0))
-        #self.miter = miter1
         round1 = round1.cut(miter1)
         columBaseCover = columBaseCover.fuse(round1)
         round1 = Part.makeCircle(self.__columBaseCoverRoundRadius,
@@ -875,8 +925,6 @@ class EntryWayAndDoor(object):
                                             -self.__columBaseCoverThickness,
                                             -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.round = round1
-        #self.miter = miter1
         miter1 = Part.makePlane(self.__columBaseCoverThickness,
                                 self.__columBaseCoverThickness,
                                 columBaseCoverOrigin.add(
@@ -889,8 +937,6 @@ class EntryWayAndDoor(object):
                                             -self.__columBaseCoverThickness,
                                             -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.round = round1
-        #self.miter = miter1
         columBaseCover = columBaseCover.fuse(round1)
         round1 = Part.makeCircle(self.__columBaseCoverRoundRadius,
                                  columBaseCoverOrigin.add(
@@ -912,8 +958,6 @@ class EntryWayAndDoor(object):
                                             self.__columBaseCoverThickness,
                                             -self.__columBaseCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.miter = miter1
-        #self.round = round1
         miter1 = Part.makePlane(self.__columBaseCoverThickness,
                                 self.__columBaseCoverThickness,
                                 columBaseCoverOrigin.add(
@@ -924,9 +968,7 @@ class EntryWayAndDoor(object):
                                  Base.Vector(-1,-1,0)).extrude(Base.Vector(
                                             -self.__columBaseCoverThickness,
                                             -self.__columBaseCoverThickness,0))
-        #self.miter = miter1
         round1 = round1.cut(miter1)
-        #self.round = round1
         columBaseCover = columBaseCover.fuse(round1)
 
         return columBaseCover
@@ -955,7 +997,6 @@ class EntryWayAndDoor(object):
                                             self.__frontCoverThickness,
                                             self.__frontCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.miter = miter1
         frontCover = frontCover.fuse(round1)
         round1 = Part.makeCircle(self.__frontCoverRoundRadius,
                                  frontCoverOrigin.add(
@@ -975,8 +1016,6 @@ class EntryWayAndDoor(object):
                                             -self.__frontCoverThickness,
                                             -self.__frontCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.miter = miter1
-        #self.round = round1
         miter1 = Part.makePlane(self.__frontCoverThickness,
                                 self.__frontCoverThickness,
                                 frontCoverOrigin.add(
@@ -987,7 +1026,6 @@ class EntryWayAndDoor(object):
                                  Base.Vector(-1,1,0)).extrude(Base.Vector(
                                             -self.__frontCoverThickness,
                                             self.__frontCoverThickness,0))
-        #self.miter = miter1
         round1 = round1.cut(miter1)
         frontCover = frontCover.fuse(round1)
         round1 = Part.makeCircle(self.__frontCoverRoundRadius,
@@ -1010,8 +1048,6 @@ class EntryWayAndDoor(object):
                                             -self.__frontCoverThickness,
                                             -self.__frontCoverThickness,0))
         round1 = round1.cut(miter1)
-        #self.round = round1
-        #self.miter = miter1
         frontCover = frontCover.fuse(round1)
         return frontCover
     def show(self,doc=None):
@@ -1041,27 +1077,6 @@ class EntryWayAndDoor(object):
         obj.Shape = self.lightGlobe
         obj.Label=self.name+"_lightGlobe"
         obj.ViewObject.ShapeColor=self.__lightGlobeColor
-        try:
-            obj = doc.addObject("Part::Feature",self.name+"_miter")
-            obj.Shape = self.miter
-            obj.Label=self.name+"_miter"
-            obj.ViewObject.ShapeColor=(1.0, 0.0, 0.0)
-        except AttributeError:
-            obj.Document.removeObject(self.name+"_miter")
-        try:
-            obj = doc.addObject("Part::Feature",self.name+"_round")
-            obj.Shape = self.round
-            obj.Label=self.name+"_round"
-            obj.ViewObject.ShapeColor=(0.0, 1.0, 0.0)
-        except AttributeError:
-            obj.Document.removeObject(self.name+"_round")
-        try:
-            obj = doc.addObject("Part::Feature",self.name+"_doors")
-            obj.Shape = self.bothDoors
-            obj.Label=self.name+"_doors"
-            obj.ViewObject.ShapeColor=(0.0, 0.0, 1.0)
-        except AttributeError:
-            obj.Document.removeObject(self.name+"_doors")
 
 class FrontWall(BirchPanel):
     __leftProtrudeOrig = Base.Vector(0,0,0)
@@ -1086,7 +1101,22 @@ class FrontWall(BirchPanel):
                        Base.Vector(101.06707763671875-(-213.4210205078125)+(.125*25.4),0,
                                     106.11219024658203-(-18.670610427856445))
                       ]
-    __entrywayXOffset = -48.76459503173828-(-213.16818237304688)
+    __entrywayXOffset = -48.76459503173828 - (-213.4203643798828) + 1
+    __towerX = -39.011409759521484 - (-291.44384765625)
+    __towerY = 0
+    __towerZ = 88.55018615722656 - (-18.670610427856445)
+    __towerOffsetWidth = 162.4363250732422 - 115.00755310058594
+    __towerAdditionalPanelZ = 200.30540466308594 - (-18.670610427856445)
+    __towerAdditionalPanelH =  307.5553894042969 - 200.30540466308594
+    __towerAdditionalPanelWidth = 115.00755310058594 - 49.40283966064453
+    __towerHeight = 307.5553894042969 - 88.55018615722656
+    __towerWidth = 38.98531723022461 - (-39.011409759521484)
+    __towerWindows = [
+                      Base.Vector(-11.444066047668457-(-39.011409759521484),0,
+                                  106.11219024658203-88.55018615722656),
+                      Base.Vector(-14.261521339416504-(-39.011409759521484),0,
+                                  211.02186584472656-88.55018615722656)
+                     ]
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -1125,6 +1155,68 @@ class FrontWall(BirchPanel):
         self.entryway = EntryWayAndDoor(name + "_EntryWay",
                                         entrywayOrigin)
         self.mainWall.wall = self.entryway.CutDoorTunnelFromPanel(self.mainWall.wall)
+        towerOffsetOrigin = self.origin.add(
+                    Base.Vector(self.__towerX,
+                                self.__towerY,
+                                self.__towerZ))
+        #print("*** FrontWall (constructor): towerOffsetOrigin is %s"%(towerOffsetOrigin))
+        #print("*** FrontWall (constructor): self.__towerOffsetWidth is %f"%(self.__towerOffsetWidth))
+        self.towerLeftOffset = WallPanel(name + "_TowerLeftOffset",
+                                         towerOffsetOrigin,
+                                         self.__towerOffsetWidth +
+                                         self.Thickness,
+                                         self.__towerHeight,
+                                         side='Left')
+        self.towerLeftOffset.CutZYfingers(endz=self.__towerHeight)
+        self.towerLeftOffset.CutZYfingers(yoffset=self.__towerOffsetWidth,
+                                          endz=self.__towerHeight)
+        self.towerLeftOffset.AddPanel(
+            yoffset=self.__towerAdditionalPanelWidth+
+                    self.__towerOffsetWidth,
+            zoffset=self.__towerAdditionalPanelZ-towerOffsetOrigin.z,
+            width=self.__towerAdditionalPanelWidth,
+            height=self.__towerAdditionalPanelH)
+        self.mainWall.Cut(self.towerLeftOffset)
+        self.mainWall.CutPanel(xoffset=(towerOffsetOrigin.x-mainWallOrigin.x)+
+                                       self.Thickness,
+                               zoffset=self.__towerZ,
+                               width=self.__towerWidth-(self.Thickness*2),
+                               height=self.__towerHeight)
+        towerFrontOrigin = self.origin.add(
+                Base.Vector(self.__towerX,
+                            self.__towerY,
+                            self.__towerZ))
+        self.tower = WallPanel(name + "_Tower",
+                               towerFrontOrigin,
+                               self.__towerWidth,
+                               self.__towerHeight,
+                               windows=self.__towerWindows,
+                               side='Front')
+        self.tower.Cut(self.towerLeftOffset)
+        towerOffsetOrigin = self.origin.add(
+                    Base.Vector(self.__towerX+self.__towerWidth-self.Thickness,
+                                self.__towerY,
+                                self.__towerZ))
+        #print("*** FrontWall (constructor): towerOffsetOrigin is %s"%(towerOffsetOrigin))
+        #print("*** FrontWall (constructor): self.__towerOffsetWidth is %f"%(self.__towerOffsetWidth))
+        self.towerRightOffset = WallPanel(name + "_TowerRightOffset",
+                                         towerOffsetOrigin,
+                                         self.__towerOffsetWidth +
+                                         self.Thickness,
+                                         self.__towerHeight,
+                                         side='Right')
+        self.towerRightOffset.CutZYfingers(endz=self.__towerHeight)
+        self.towerRightOffset.CutZYfingers(yoffset=self.__towerOffsetWidth,
+                                          endz=self.__towerHeight)
+        self.tower.Cut(self.towerRightOffset)
+        self.towerRightOffset.AddPanel(
+            yoffset=self.__towerAdditionalPanelWidth+
+                    self.__towerOffsetWidth,
+            zoffset=self.__towerAdditionalPanelZ-towerOffsetOrigin.z,
+            width=self.__towerAdditionalPanelWidth,
+            height=self.__towerAdditionalPanelH)
+        self.mainWall.Cut(self.towerRightOffset)
+        
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -1132,6 +1224,10 @@ class FrontWall(BirchPanel):
         self.protrudeOffset.show(doc)
         self.mainWall.show(doc)
         self.entryway.show(doc)
+        self.towerLeftOffset.show(doc)
+        self.tower.show(doc)
+        self.towerRightOffset.show(doc)
+        
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
