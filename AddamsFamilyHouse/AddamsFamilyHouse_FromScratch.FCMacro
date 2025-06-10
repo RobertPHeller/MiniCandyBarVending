@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250610.1007>
+#  Last Modified : <250610.1141>
 #
 #  Description	
 #
@@ -1117,6 +1117,18 @@ class FrontWall(BirchPanel):
                       Base.Vector(-14.261521339416504-(-39.011409759521484),0,
                                   211.02186584472656-88.55018615722656)
                      ]
+    __bayX = 58.494903564453125 - (-291.44384765625)
+    __bayY = 162.4363250732422 - 138.721923828125
+    __bayZ =  -10.871750831604004 - (-18.670610427856445)
+    __bayOffsetWidth = 138.721923828125 - 115.00755310058594
+    __bayHeight = 72.95903778076172 - (-18.670610427856445)
+    __bayWidth = 136.52464294433594 - 58.494903564453125
+    __bayWindows = [
+                    Base.Vector(71.09040832519531 - 58.494903564453125,0,
+                                0.8360995054244995 - (-18.670610427856445)),
+                    Base.Vector(101.06707763671875 - 58.494903564453125,0,
+                                0.8360995054244995 - (-18.670610427856445))
+                    ]
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -1216,7 +1228,48 @@ class FrontWall(BirchPanel):
             width=self.__towerAdditionalPanelWidth,
             height=self.__towerAdditionalPanelH)
         self.mainWall.Cut(self.towerRightOffset)
-        
+        bayOffsetOrigin = self.origin.add(
+                    Base.Vector(self.__bayX,
+                                self.__bayY,
+                                self.__bayZ))
+        self.bayLeftOffset = WallPanel(name + "_BayLeftOffset",
+                                       bayOffsetOrigin,
+                                       self.__bayOffsetWidth + 
+                                        self.Thickness,
+                                       self.__bayHeight,
+                                       side='Left')
+        self.bayLeftOffset.CutZYfingers(endz=self.__bayHeight)
+        self.bayLeftOffset.CutZYfingers(yoffset=self.__bayOffsetWidth,
+                                        endz=self.__bayHeight)
+        self.mainWall.Cut(self.bayLeftOffset)
+        self.mainWall.CutPanel(xoffset=(bayOffsetOrigin.x-mainWallOrigin.x)+
+                                       self.Thickness,
+                               zoffset=self.__bayZ,
+                               width=self.__bayWidth-(self.Thickness*2),
+                               height=self.__bayHeight)
+        bayFrontOrigin = self.origin.add(
+                            Base.Vector(self.__bayX,self.__bayY,self.__bayZ))
+        self.bay = WallPanel(name + "_Bay",
+                             bayFrontOrigin,
+                             self.__bayWidth,
+                             self.__bayHeight,
+                             windows=self.__bayWindows,
+                             side='Front')
+        self.bay.Cut(self.bayLeftOffset)
+        bayOffsetOrigin = self.origin.add(
+                            Base.Vector(self.__bayX+self.__bayWidth-
+                                            self.Thickness,
+                                        self.__bayY,self.__bayZ))
+        self.bayRightOffset = WallPanel(name + "_BayRightOffset",
+                                        bayOffsetOrigin,
+                                        self.__bayOffsetWidth + self.Thickness,
+                                        self.__bayHeight,
+                                        side='Right')
+        self.bayRightOffset.CutZYfingers(endz=self.__bayHeight)
+        self.bayRightOffset.CutZYfingers(yoffset=self.__bayOffsetWidth,
+                                         endz=self.__bayHeight)
+        self.bay.Cut(self.bayRightOffset)
+        self.mainWall.Cut(self.bayRightOffset)
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -1227,6 +1280,9 @@ class FrontWall(BirchPanel):
         self.towerLeftOffset.show(doc)
         self.tower.show(doc)
         self.towerRightOffset.show(doc)
+        self.bayLeftOffset.show(doc)
+        self.bay.show(doc)
+        self.bayRightOffset.show(doc)
         
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
