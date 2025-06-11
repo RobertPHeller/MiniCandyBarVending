@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250610.1141>
+#  Last Modified : <250611.0918>
 #
 #  Description	
 #
@@ -114,13 +114,13 @@ class LargeArchWindow(BirchPanel):
                                               -self.__archMinorRadius,
                                               self.__bottomRectHeight))
             archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
-            rchMinor = archOrig.add(Base.Vector(0,self.__archMinorRadius,0))
-            extrude = Base.Vector(-self.Thickness,0,0)
+            archMinor = archOrig.add(Base.Vector(0,self.__archMinorRadius,0))
+            extrude = Base.Vector(self.Thickness,0,0)
             archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
             archWire = Part.Wire(archEllipse.toShape())
             archFace = Part.Face(archWire)
             arch     = archFace.extrude(extrude)
-            temp = Base.Vector(0,-self.__bottomRectWidth,0)
+            temp = Base.Vector(0,0,self.__bottomRectHeight)
             base     = Part.makePlane(self.__bottomRectHeight,
                                       self.__bottomRectWidth,
                                       origin.add(temp),
@@ -1078,7 +1078,35 @@ class EntryWayAndDoor(object):
         obj.Label=self.name+"_lightGlobe"
         obj.ViewObject.ShapeColor=self.__lightGlobeColor
 
-class FrontWall(BirchPanel):
+class AllWalls(BirchPanel):
+    __leftWallOrigin = Base.Vector(0,0,0)
+    __leftWidth = 162.43698120117188 - (-269.84454345703125)
+    __leftWallWindows = [
+                        Base.Vector(0,162.4369812011718-102.58531188964844,
+                                    0.8360995054244995-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-102.58531188964844,
+                                    106.11219024658203-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-36.285369873046875,
+                                    0.8360995054244995-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-36.285369873046875,
+                                    106.11219024658203-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-30.014583587646484),
+                                    0.8360995054244995-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-30.014583587646484),
+                                    106.11219024658203-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-100.25502014160156),
+                                    0.8360995054244995-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-100.25502014160156),
+                                    106.11219024658203-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-166.5549774169922),
+                                    0.8360995054244995-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-166.5549774169922),
+                                    106.11219024658203-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-232.8549041748047),
+                                    0.8360995054244995-(-18.670610427856445)),
+                        Base.Vector(0,162.4369812011718-(-232.8549041748047),
+                                    106.11219024658203-(-18.670610427856445))
+                        ]
     __leftProtrudeOrig = Base.Vector(0,0,0)
     __leftProtrudeWidth = (-213.16818237304688) - (-293.39385986328125)
     __wallHeight = 200.30540466308594-(-18.670610427856445)
@@ -1134,12 +1162,19 @@ class FrontWall(BirchPanel):
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
         self.origin = origin
+        self.leftWall     = WallPanel(name + "_LeftWall",
+                              self.origin.add(self.__leftWallOrigin),
+                              self.__leftWidth,
+                              self.__wallHeight,
+                              windows=self.__leftWallWindows,
+                              side='Left') 
         self.leftProtrude = WallPanel(name + "_LeftProtrude",
                              self.origin.add(self.__leftProtrudeOrig),
                              self.__leftProtrudeWidth, 
                              self.__wallHeight,
                              windows=self.__leftProtrudeWindows)
         self.leftProtrude.CutZYfingers(endz=self.__wallHeight)
+        self.leftWall.Cut(self.leftProtrude)
         self.leftProtrude.CutZYfingers(
                     xoffset=self.__leftProtrudeWidth-self.Thickness,
                     endz=self.__wallHeight)
@@ -1273,6 +1308,7 @@ class FrontWall(BirchPanel):
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
+        self.leftWall.show(doc)
         self.leftProtrude.show(doc)
         self.protrudeOffset.show(doc)
         self.mainWall.show(doc)
@@ -1288,7 +1324,7 @@ if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
     doc = App.newDocument("AddamsFamilyHouse")
-    frontWall = FrontWall("FrontWall",Base.Vector(0,0,0))
-    frontWall.show(doc)
+    allWalls = AllWalls("AllWalls",Base.Vector(0,0,0))
+    allWalls.show(doc)
     Gui.activeDocument().activeView().viewFront()
     Gui.SendMsgToActiveView("ViewFit")
