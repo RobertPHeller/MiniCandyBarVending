@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250612.2226>
+#  Last Modified : <250613.0921>
 #
 #  Description	
 #
@@ -1264,6 +1264,26 @@ class GreenHouse(object):
     __wallHeight = 106.17420959472656 - (-18.670608520507812)
     __length     = 274.43206787109375 - 156.03402709960938
     __width      = 88.99929809570312 - (-29.339580535888672)
+    # Vector (162.48980712890625, 69.2083511352539, 86.07927703857422)
+    # Vector (219.2116241455078, 69.20860290527344, 86.07868957519531)
+    # Vector (162.4896697998047, -5.378434658050537, 86.07927703857422)
+    # Vector (166.847412109375, -5.378434658050537, 86.07884979248047)
+    # Vector (162.4896697998047, 1.3253087997436523, 86.07927703857422)
+    # Vector (211.28485107421875, -5.378434658050537, 86.07450103759766)
+    # Vector (162.48980712890625, 69.2083511352539, 86.07927703857422)
+    # Vector (166.84666442871094, 69.2083511352539, 86.07905578613281)
+    # Vector (162.4896697998047, 1.9050686359405518, 86.07927703857422)
+    
+    __window2Offset = 219.2116241455078 - 162.48980712890625
+    __windowOffset = 162.48980712890625 - 156.03402709960938
+    __windowBottom = -5.378434658050537 - (-18.670608520507812)
+    __windowWidth = 211.28485107421875 - 162.48980712890625
+    __windowTop = 69.2083511352539-(-5.378434658050537)
+    __windowPaneWidth = 166.847412109375-162.4896697998047
+    __windowPaneHeight = 1.3253087997436523 - (-5.378434658050537)
+    __windowPaneXStride = 167.42715454101562 - 162.4896697998047
+    __windowPaneZStride = 1.9050686359405518 - (-5.378434658050537)
+    
     __color      = (.8, .8, .8)
     def __init__(self,name,origin):
         self.name = name
@@ -1358,7 +1378,55 @@ class GreenHouse(object):
                                    miter2Norm).extrude(miter2extrude)
             wall = wall.cut(miter)
             #self.miter = miter
-             
+        for window in range(0,2):
+            if side=='Front':
+                windowOrigin = wallOrigin.add(
+                    Base.Vector(self.__windowOffset+
+                                    (window*self.__window2Offset),
+                                0,self.__windowBottom))
+                for py in range(10):
+                    for px in range(10):
+                        pane = Part.makePlane(self.__windowPaneHeight,
+                                              self.__windowPaneWidth,
+                                              windowOrigin.add(
+                                                Base.Vector(px*self.__windowPaneXStride,
+                                                            0,
+                                                            py*self.__windowPaneZStride)),
+                                              norm).extrude(extrude)
+                        wall = wall.cut(pane)
+            elif side=='Right':
+                windowOrigin = wallOrigin.add(
+                    Base.Vector(0,-(self.__windowOffset+
+                                    (window*self.__window2Offset)),
+                                self.__windowBottom))
+                for py in range(10):
+                    for px in range(10):
+                        pane = Part.makePlane(self.__windowPaneHeight,
+                                              self.__windowPaneWidth,
+                                              windowOrigin.add(
+                                                Base.Vector (0,
+                                                             -px*self.__windowPaneXStride,
+                                                             py*self.__windowPaneZStride)),
+                                              norm).extrude(extrude)
+                        wall = wall.cut(pane)
+            elif side=='Rear':
+                windowOrigin = wallOrigin.add(
+                    Base.Vector((self.__windowOffset+
+                                    (window*self.__window2Offset)),
+                                0,-(self.__wallHeight-(self.__windowBottom+
+                                                        self.__windowPaneZStride))))
+                for py in range(10):
+                    for px in range(10):
+                        pane = Part.makePlane(self.__windowPaneHeight,
+                                              self.__windowPaneWidth,
+                                              windowOrigin.add(
+                                                Base.Vector(px*self.__windowPaneXStride,
+                                                            0,
+                                                            py*self.__windowPaneZStride)),
+                                              norm).extrude(extrude)
+                        wall = wall.cut(pane)
+            else:
+                raise RuntimeError("unsuported side!")
         return(wall)
 class AddamsFamilyHouse(BirchPanel):
     __leftWallOrigin = Base.Vector(0,0,0)
