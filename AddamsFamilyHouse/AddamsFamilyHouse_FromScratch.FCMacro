@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250611.1837>
+#  Last Modified : <250612.2226>
 #
 #  Description	
 #
@@ -87,7 +87,83 @@ class LargeArchWindow(BirchPanel):
     __archMajorRadius = 66.17835235595703-50.67988586425781
     __bottomRectHeight = 50.67988586425781-.8360995054244995
     __bottomRectWidth = (-241.0014190673828) - (-263.86346435546875)
-    def __init__(self,origin,side='Front'):
+    __TrimThickness = .75
+    __LEDMountDepth = 12.5
+    __TrimWidth = 1.5
+    __trimColor=(139/255, 35/255, 35/255)
+    __LEDMountColor=(0.0, 0.0, 0.0)
+    @classmethod
+    def Trim3DPrint(cls,*,doc=None,filename='LargeArchWindowTrim.stl'):
+        archOrig = Base.Vector(cls.__archMinorRadius,
+                               cls.__bottomRectHeight,0)
+        archMajor = archOrig.add(Base.Vector(0,cls.__archMajorRadius,0))
+        archOMajor = archMajor.add(Base.Vector(0,cls.__TrimWidth,0))
+        archMinor = archOrig.add(Base.Vector(-cls.__archMinorRadius,0,0))
+        archOMinor = archMinor.add(Base.Vector(-cls.__TrimWidth,0,0))
+        extrudeTrim = Base.Vector(0,0,cls.__TrimThickness)
+        baseOOffset = Base.Vector(-cls.__TrimWidth,-cls.__TrimWidth,0)
+        archEllipse=Part.Ellipse(archOMajor,archOMinor,archOrig)
+        archWire = Part.Wire(archEllipse.toShape())
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeTrim)
+        base     = Part.makePlane(cls.__bottomRectWidth+(cls.__TrimWidth*2),
+                                  cls.__bottomRectHeight,
+                                  baseOOffset).extrude(extrudeTrim)
+        windowTrim = base.fuse(arch)
+        archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
+        archWire = Part.Wire(archEllipse.toShape()) 
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeTrim)
+        base     = Part.makePlane(cls.__bottomRectWidth,
+                                  cls.__bottomRectHeight
+                                  ).extrude(extrudeTrim)
+        windowTrim = windowTrim.cut(base.fuse(arch)) 
+        if doc==None:
+            if "WindowTrim" in App.listDocuments().keys():
+                App.closeDocument("WindowTrim")
+            doc=App.newDocument('WindowTrim')
+        obj = doc.addObject("Part::Feature","WindowTrim")
+        obj.Shape = windowTrim
+        objs = list()
+        objs.append(obj)
+        Mesh.export(objs,filename)
+    @classmethod
+    def LEDMountDPrint(cls,*,doc=None,filename='LargeArchWindowLEDMount.stl'):
+        archOrig = Base.Vector(cls.__archMinorRadius,
+                               cls.__bottomRectHeight,0)
+        archMajor = archOrig.add(Base.Vector(0,cls.__archMajorRadius,0))
+        archOMajor = archMajor.add(Base.Vector(0,cls.__TrimWidth,0))
+        archMinor = archOrig.add(Base.Vector(-cls.__archMinorRadius,0,0))
+        archOMinor = archMinor.add(Base.Vector(-cls.__TrimWidth,0,0))
+        extrudeLEDMount = Base.Vector(0,0,cls.__LEDMountDepth)
+        baseOOffset = Base.Vector(-cls.__TrimWidth,-cls.__TrimWidth,0)
+        archEllipse=Part.Ellipse(archOMajor,archOMinor,archOrig)
+        archWire = Part.Wire(archEllipse.toShape())
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeLEDMount)
+        base     = Part.makePlane(cls.__bottomRectWidth+(cls.__TrimWidth*2),
+                                  cls.__bottomRectHeight,
+                                  baseOOffset).extrude(extrudeLEDMount)
+        windowLEDMount = base.fuse(arch)
+        archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
+        archWire = Part.Wire(archEllipse.toShape()) 
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeLEDMount)
+        base     = Part.makePlane(cls.__bottomRectWidth,
+                                  cls.__bottomRectHeight,
+                                  ).extrude(extrudeLEDMount)
+        windowLEDMount = windowLEDMount.cut(base.fuse(arch)) 
+        if doc==None:
+            if "WindowLEDMount" in App.listDocuments().keys():
+                App.closeDocument("WindowLEDMount")
+            doc=App.newDocument('WindowLEDMount')
+        obj = doc.addObject("Part::Feature","WindowLEDMount")
+        obj.Shape = windowLEDMount
+        objs = list()
+        objs.append(obj)
+        Mesh.export(objs,filename)
+    def __init__(self,origin,side='Front',name="window"):
+        self.name = name
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
         self.origin = origin
@@ -95,57 +171,124 @@ class LargeArchWindow(BirchPanel):
             archOrig = origin.add(Base.Vector(self.__archMinorRadius,0,
                                               self.__bottomRectHeight))
             archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
+            archOMajor = archMajor.add(Base.Vector(0,0,self.__TrimWidth))
             archMinor = archOrig.add(Base.Vector(-self.__archMinorRadius,0,0))
+            archOMinor = archMinor.add(Base.Vector(-self.__TrimWidth,0,0))
             extrude = Base.Vector(0,BirchPanel.Thickness(),0)
+            trimOffset = Base.Vector(0,0,0)
+            extrudeTrim = Base.Vector(0,-self.__TrimThickness,0)
+            LEDMountOffset = extrude
+            extrudeLEDMount = Base.Vector(0,self.__LEDMountDepth,0)
+            
             #print("*** LargeArchWindow.__init__(): archOrig is ",archOrig)
             #print("*** LargeArchWindow.__init__(): archMajor is ",archMajor)
             #print("*** LargeArchWindow.__init__(): archMinor is ",archMinor)
-            archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
-            archWire = Part.Wire(archEllipse.toShape())
-            archFace = Part.Face(archWire)
-            arch     = archFace.extrude(extrude)
-            base     = Part.makePlane(self.__bottomRectHeight,
-                                      self.__bottomRectWidth,
-                                      origin,
-                                      Base.Vector(0,1,0)).extrude(extrude)
-            self.window = base.fuse(arch)
+            baseOffset = Base.Vector(0,0,0)
+            baseOOffset = baseOffset.add(Base.Vector(-self.__TrimWidth,0,
+                                                     -self.__TrimWidth))
+            baseNorm = Base.Vector(0,1,0)
         elif side == 'Left':
             archOrig = origin.add(Base.Vector(0,
                                               -self.__archMinorRadius,
                                               self.__bottomRectHeight))
             archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
+            archOMajor = archMajor.add(Base.Vector(0,0,self.__TrimWidth))
             archMinor = archOrig.add(Base.Vector(0,self.__archMinorRadius,0))
+            archOMinor = archMinor.add(Base.Vector(0,self.__TrimWidth,0))
             extrude = Base.Vector(BirchPanel.Thickness(),0,0)
-            archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
-            archWire = Part.Wire(archEllipse.toShape())
-            archFace = Part.Face(archWire)
-            arch     = archFace.extrude(extrude)
-            temp = Base.Vector(0,0,self.__bottomRectHeight)
-            base     = Part.makePlane(self.__bottomRectHeight,
-                                      self.__bottomRectWidth,
-                                      origin.add(temp),
-                                      Base.Vector(-1,0,0)).extrude(extrude)
-            self.window = base.fuse(arch)
+            trimOffset = Base.Vector(0,0,0)
+            extrudeTrim = Base.Vector(-self.__TrimThickness,0,0)
+            LEDMountOffset = extrude
+            extrudeLEDMount = Base.Vector(self.__LEDMountDepth,0,0)
+            baseOffset = Base.Vector(0,0,self.__bottomRectHeight)
+            baseOOffset = baseOffset.add(Base.Vector(0,self.__TrimWidth,
+                                                     -self.__TrimWidth))
+            baseNorm = Base.Vector(-1,0,0)
         elif side == 'Right':
             archOrig = origin.add(Base.Vector(0,
                                               self.__archMinorRadius,
                                               self.__bottomRectHeight))
             archMajor = archOrig.add(Base.Vector(0,0,self.__archMajorRadius))
+            archOMajor = archMajor.add(Base.Vector(0,0,self.__TrimWidth))
             archMinor = archOrig.add(Base.Vector(0,self.__archMinorRadius,0))
+            archOMinor = archMinor.add(Base.Vector(0,self.__TrimWidth,0))
             extrude = Base.Vector(BirchPanel.Thickness(),0,0)
-            archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
-            archWire = Part.Wire(archEllipse.toShape())
-            archFace = Part.Face(archWire)
-            arch     = archFace.extrude(extrude)
-            base     = Part.makePlane(self.__bottomRectHeight,
-                                      self.__bottomRectWidth,
-                                      origin.add(Base.Vector(0,self.__bottomRectWidth,0)),
-                                      Base.Vector(1,0,0)).extrude(extrude)
-            self.window = base.fuse(arch)
+            trimOffset = extrude
+            extrudeTrim = Base.Vector(self.__TrimThickness,0,0)
+            LEDMountOffset = Base.Vector(0,0,0)
+            extrudeLEDMount = Base.Vector(-self.__LEDMountDepth,0,0)
+            baseOffset = Base.Vector(0,self.__bottomRectWidth,0)
+            baseOOffset = baseOffset.add(Base.Vector(0,self.__TrimWidth,
+                                                     -self.__TrimWidth))
+            baseNorm = Base.Vector(1,0,0)
         else:
             raise RuntimeError("unsuported side!")
+        archEllipse=Part.Ellipse(archMajor,archMinor,archOrig)
+        archWire = Part.Wire(archEllipse.toShape())
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrude)
+        base     = Part.makePlane(self.__bottomRectHeight,
+                                  self.__bottomRectWidth,
+                                  origin.add(baseOffset),
+                                  baseNorm).extrude(extrude)
+        self.windowCutout = base.fuse(arch)
+        archEllipse=Part.Ellipse(archOMajor.add(trimOffset),
+                                 archOMinor.add(trimOffset),
+                                 archOrig.add(trimOffset))
+        archWire = Part.Wire(archEllipse.toShape())
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeTrim)
+        base     = Part.makePlane(self.__bottomRectHeight,
+                                  self.__bottomRectWidth+(self.__TrimWidth*2),
+                                  origin.add(baseOOffset).add(trimOffset),
+                                  baseNorm).extrude(extrudeTrim)
+        self.windowTrim = base.fuse(arch)
+        archEllipse=Part.Ellipse(archMajor.add(trimOffset),
+                                 archMinor.add(trimOffset),
+                                 archOrig.add(trimOffset))
+        archWire = Part.Wire(archEllipse.toShape())
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeTrim)
+        base     = Part.makePlane(self.__bottomRectHeight,
+                                  self.__bottomRectWidth,
+                                  origin.add(baseOffset).add(trimOffset),
+                                  baseNorm).extrude(extrudeTrim)
+        self.windowTrim = self.windowTrim.cut(base.fuse(arch))
+        archEllipse=Part.Ellipse(archOMajor.add(LEDMountOffset),
+                                 archOMinor.add(LEDMountOffset),
+                                 archOrig.add(LEDMountOffset))
+        archWire = Part.Wire(archEllipse.toShape())
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeLEDMount)
+        base     = Part.makePlane(self.__bottomRectHeight,
+                                  self.__bottomRectWidth+(self.__TrimWidth*2),
+                                  origin.add(baseOOffset).add(LEDMountOffset),
+                                  baseNorm).extrude(extrudeLEDMount)
+        self.windowLEDMount = base.fuse(arch)
+        archEllipse=Part.Ellipse(archMajor.add(LEDMountOffset),
+                                 archMinor.add(LEDMountOffset),
+                                 archOrig.add(LEDMountOffset))
+        archWire = Part.Wire(archEllipse.toShape())
+        archFace = Part.Face(archWire)
+        arch     = archFace.extrude(extrudeLEDMount)
+        base     = Part.makePlane(self.__bottomRectHeight,
+                                  self.__bottomRectWidth,
+                                  origin.add(baseOffset).add(LEDMountOffset),
+                                  baseNorm).extrude(extrudeLEDMount)
+        self.windowLEDMountTrim = self.windowLEDMount.cut(base.fuse(arch))
     def Cut(self,wall):
-        return wall.cut(self.window)
+        return wall.cut(self.windowCutout)
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name+"_trim")
+        obj.Shape = self.windowTrim
+        obj.Label=self.name+"_trim"
+        obj.ViewObject.ShapeColor=self.__trimColor
+        obj = doc.addObject("Part::Feature",self.name+"_LEDMount")
+        obj.Shape = self.windowLEDMount
+        obj.Label=self.name+"_LEDMount"
+        obj.ViewObject.ShapeColor=self.__LEDMountColor
 
 class WallPanel(BirchPanel):
     def __init__(self,name,origin,width,height,*,windows=[],side='Front'):
@@ -177,8 +320,8 @@ class WallPanel(BirchPanel):
         else:
             raise RuntimeError("unsuported side!")
         self.windows = list()
-        for org in windows:
-            w = LargeArchWindow(origin.add(org),side)
+        for i,org in enumerate(windows):
+            w = LargeArchWindow(origin.add(org),side,name+"_window%02d"%(i))
             panel = w.Cut(panel)
             self.windows.append(w)
         self.wall = panel
@@ -282,6 +425,29 @@ class WallPanel(BirchPanel):
         obj.Shape = self.wall
         obj.Label=self.name
         obj.ViewObject.ShapeColor=self.Color
+        for w in self.windows:
+            w.show(doc)
+
+class Floor(BirchPanel):
+    def __init__(self,name,origin,width,height):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        extrude = Base.Vector(0,0,BirchPanel.Thickness())
+        panel = Part.makePlane(height,width,origin).extrude(extrude)
+        self.floor = panel
+    def Cut(self,wall):
+        self.floor = self.floor.cut(wall.wall)
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.floor
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.Color
+
+
 
 class EntryWayAndDoor(object):
     __baseDepth = 183.25379943847656-115.00755310058594
@@ -1084,7 +1250,117 @@ class EntryWayAndDoor(object):
         obj.Label=self.name+"_lightGlobe"
         obj.ViewObject.ShapeColor=self.__lightGlobeColor
 
-class AllWalls(BirchPanel):
+class GreenHouse(object):
+    # Vector (156.03402709960938, -18.670608520507812, 89.00996398925781)
+    # Vector (274.43206787109375, -18.670618057250977, 88.99929809570312)
+    # Vector (274.43206787109375, -18.670618057250977, -29.339580535888672)
+    # Vector (156.03402709960938, -18.670608520507812, -29.339040756225586)
+    #
+    # Vector (156.03402709960938, 106.17420959472656, 89.00996398925781)
+    # Vector (274.43206787109375, 106.17420959472656, 88.98863220214844)
+    # Vector (274.43206787109375, 106.17420959472656, -29.339580535888672)
+    # Vector (156.03402709960938, 106.17420959472656, -29.339040756225586)
+    __wallThickness = (1/16)*25.4
+    __wallHeight = 106.17420959472656 - (-18.670608520507812)
+    __length     = 274.43206787109375 - 156.03402709960938
+    __width      = 88.99929809570312 - (-29.339580535888672)
+    __color      = (.8, .8, .8)
+    def __init__(self,name,origin):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        self.front=self.__wall('Front')
+        self.right=self.__wall('Right')
+        self.rear =self.__wall('Rear')
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name+"_Front")
+        obj.Shape = self.front
+        obj.Label=self.name+"_Front"
+        obj.ViewObject.ShapeColor=self.__color
+        obj = doc.addObject("Part::Feature",self.name+"_Right")
+        obj.Shape = self.right
+        obj.Label=self.name+"_Right"
+        obj.ViewObject.ShapeColor=self.__color
+        obj = doc.addObject("Part::Feature",self.name+"_Rear")
+        obj.Shape = self.rear
+        obj.Label=self.name+"_Rear"
+        obj.ViewObject.ShapeColor=self.__color
+        try:
+            obj = doc.addObject("Part::Feature",self.name+"_Miter")
+            obj.Shape = self.miter
+            obj.ViewObject.ShapeColor=(1.0, 0.0, 0.0)
+        except Exception  as e:
+            doc.removeObject(obj.Label)            
+    def __wall(self,side):
+        if side=='Front':
+            norm=Base.Vector(0,1,0)
+            extrude=Base.Vector(0,self.__wallThickness,0)
+            wallOrigin = self.origin
+            width = self.__length+self.__wallThickness
+            miter1Origin=Base.Vector(width-self.__wallThickness,
+                                     self.__wallThickness,
+                                     self.__wallHeight)
+            miter1Norm=Base.Vector(1,1,0)
+            miter1extrude=Base.Vector(self.__wallThickness,
+                                      self.__wallThickness,0)
+            miter2Origin=None
+        elif side=='Right':
+            norm=Base.Vector(1,0,0)
+            extrude=Base.Vector(self.__wallThickness,0,0)
+            wallOrigin = self.origin.add(Base.Vector(self.__length,self.__width,0))
+            width = self.__width
+            miter1Origin=Base.Vector(self.__wallThickness,
+                                     -self.__width,
+                                     self.__wallHeight)
+            miter1Norm=Base.Vector(-1,-1,0)
+            miter1extrude=Base.Vector(-self.__wallThickness,
+                                      -self.__wallThickness,0)
+            miter2Origin=Base.Vector(self.__wallThickness,
+                                     0,
+                                     self.__wallHeight)
+            miter2Norm=Base.Vector(-1,-1,0)
+            miter2extrude=Base.Vector(-self.__wallThickness,
+                                      -self.__wallThickness,0)
+        elif side=='Rear':
+            norm=Base.Vector(0,-1,0)
+            extrude=Base.Vector(0,-self.__wallThickness,0)
+            wallOrigin = self.origin.add(Base.Vector(0,
+                                                     self.__width,
+                                                     self.__wallHeight))
+            width = self.__length+self.__wallThickness
+            miter1Origin=Base.Vector(width-self.__wallThickness,
+                                     -self.__wallThickness,
+                                     0)
+            miter1Norm=Base.Vector(1,1,0)
+            miter1extrude=Base.Vector(self.__wallThickness,
+                                      self.__wallThickness,0)
+            miter2Origin=None
+        else:
+            raise RuntimeError("unsuported side!")
+        wall = Part.makePlane(self.__wallHeight,
+                              width,
+                              wallOrigin,
+                              norm).extrude(extrude)
+        if miter1Origin != None:
+            miter = Part.makePlane(self.__wallThickness*2,
+                                   self.__wallHeight,
+                                   wallOrigin.add(miter1Origin),
+                                   miter1Norm).extrude(miter1extrude)
+            wall = wall.cut(miter)
+            #self.miter = miter
+        if miter2Origin != None:
+            miter = Part.makePlane(self.__wallThickness*2,
+                                   self.__wallHeight,
+                                   wallOrigin.add(miter2Origin),
+                                   miter2Norm).extrude(miter2extrude)
+            wall = wall.cut(miter)
+            #self.miter = miter
+             
+        return(wall)
+class AddamsFamilyHouse(BirchPanel):
     __leftWallOrigin = Base.Vector(0,0,0)
     __leftWidth = 162.43698120117188 - (-269.84454345703125)
     __leftWallWindows = [
@@ -1182,6 +1458,9 @@ class AllWalls(BirchPanel):
                                ]
     __rightWidth2 = (-222.4488067626953 - (-269.84454345703125)) +\
                     BirchPanel.Thickness()
+    __greenhouseOrigin = Base.Vector(156.03402709960938-(-293.39385986328125),
+                                     162.4369812011718-89.00996398925781,
+                                     0)
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -1301,12 +1580,20 @@ class AllWalls(BirchPanel):
         self.bayLeftOffset.CutZYfingers(endz=self.__bayHeight)
         self.bayLeftOffset.CutZYfingers(yoffset=self.__bayOffsetWidth,
                                         endz=self.__bayHeight)
+        self.bayLeftOffset.CutYZfingers(endy=self.__bayOffsetWidth)
         self.mainWall.Cut(self.bayLeftOffset)
-        self.mainWall.CutPanel(xoffset=(bayOffsetOrigin.x-mainWallOrigin.x)+
-                                       BirchPanel.Thickness(),
-                               zoffset=self.__bayZ,
-                               width=self.__bayWidth-(BirchPanel.Thickness()*2),
-                               height=self.__bayHeight)
+        xoff1 = (bayOffsetOrigin.x-mainWallOrigin.x)+BirchPanel.Thickness()
+        cutwidth = self.__bayWidth-(BirchPanel.Thickness()*2)
+        xoff2 = xoff1+cutwidth
+        self.mainWall.CutPanel(xoffset=xoff1,
+                               zoffset=self.__bayZ+BirchPanel.Thickness(),
+                               width=cutwidth,
+                               height=self.__bayHeight-BirchPanel.Thickness())
+
+        self.mainWall.CutXZfingers(zoffset=self.__bayZ,
+                                   startx=xoff1,
+                                   endx=xoff2)
+
         bayFrontOrigin = self.origin.add(
                             Base.Vector(self.__bayX,self.__bayY,self.__bayZ))
         self.bay = WallPanel(name + "_Bay",
@@ -1316,6 +1603,7 @@ class AllWalls(BirchPanel):
                              windows=self.__bayWindows,
                              side='Front')
         self.bay.Cut(self.bayLeftOffset)
+        self.bay.CutXZfingers(endx=self.__bayWidth)
         bayOffsetOrigin = self.origin.add(
                             Base.Vector(self.__bayX+self.__bayWidth-
                                             BirchPanel.Thickness(),
@@ -1330,6 +1618,15 @@ class AllWalls(BirchPanel):
                                          endz=self.__bayHeight)
         self.bay.Cut(self.bayRightOffset)
         self.mainWall.Cut(self.bayRightOffset)
+        self.bayRightOffset.CutYZfingers(endy=self.__bayOffsetWidth)
+        self.bayFloor = Floor(name + "_BayFloor",
+                              bayFrontOrigin,
+                              self.__bayOffsetWidth+BirchPanel.Thickness(),
+                              self.__bayWidth)
+        self.bayFloor.Cut(self.mainWall)
+        self.bayFloor.Cut(self.bayRightOffset)
+        self.bayFloor.Cut(self.bayLeftOffset)
+        self.bayFloor.Cut(self.bay)
         self.rightWall1    = WallPanel(name + "_RightWall1",
                                        self.origin.add(self.__rightWallOrigin),
                                        self.__rightWidth1+BirchPanel.Thickness(),
@@ -1383,7 +1680,8 @@ class AllWalls(BirchPanel):
                                        side='Right')
         self.rightWall2.CutZYfingers(endz=self.__wallHeight)
         self.rightWallProtrusionRO.Cut(self.rightWall2)
-        
+        self.greenhouse = GreenHouse(name+"_Greenhouse",
+                                     origin.add(self.__greenhouseOrigin))
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -1398,17 +1696,21 @@ class AllWalls(BirchPanel):
         self.bayLeftOffset.show(doc)
         self.bay.show(doc)
         self.bayRightOffset.show(doc)
+        self.bayFloor.show(doc)
         self.rightWall1.show(doc)
         self.rightWallProtrusionLO.show(doc)
         self.rightWallProtrusion.show(doc)
         self.rightWallProtrusionRO.show(doc)
         self.rightWall2.show(doc)
+        self.greenhouse.show(doc)
         
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
     doc = App.newDocument("AddamsFamilyHouse")
-    allWalls = AllWalls("AllWalls",Base.Vector(0,0,0))
-    allWalls.show(doc)
+    AddamsFamilyHouse = AddamsFamilyHouse("AddamsFamilyHouse",Base.Vector(0,0,0))
+    AddamsFamilyHouse.show(doc)
     Gui.activeDocument().activeView().viewFront()
     Gui.SendMsgToActiveView("ViewFit")
+    #LargeArchWindow.Trim3DPrint()
+    #LargeArchWindow.LEDMountDPrint()
