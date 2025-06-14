@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250613.0921>
+#  Last Modified : <250613.2029>
 #
 #  Description	
 #
@@ -44,6 +44,8 @@
 import FreeCAD as App
 import Part, TechDraw, Mesh, MeshPart, TechDrawGui
 from FreeCAD import Base
+
+import math
 
 import os
 import sys
@@ -1278,12 +1280,15 @@ class GreenHouse(object):
     __windowOffset = 162.48980712890625 - 156.03402709960938
     __windowBottom = -5.378434658050537 - (-18.670608520507812)
     __windowWidth = 211.28485107421875 - 162.48980712890625
+    __upperWindowOffset = 75.51575469970703-69.2083511352539
+    __upperWindowRadius = (210.8865966796875-162.88238525390625)/2
     __windowTop = 69.2083511352539-(-5.378434658050537)
     __windowPaneWidth = 166.847412109375-162.4896697998047
     __windowPaneHeight = 1.3253087997436523 - (-5.378434658050537)
     __windowPaneXStride = 167.42715454101562 - 162.4896697998047
     __windowPaneZStride = 1.9050686359405518 - (-5.378434658050537)
-    
+    __upperBarWidth = 0.988888657334412 / 2
+    __upperBarAngle = 90/4
     __color      = (.8, .8, .8)
     def __init__(self,name,origin):
         self.name = name
@@ -1315,6 +1320,7 @@ class GreenHouse(object):
         except Exception  as e:
             doc.removeObject(obj.Label)            
     def __wall(self,side):
+        #print("*** GreenHouse.__wall(",self,",",side,")")
         if side=='Front':
             norm=Base.Vector(0,1,0)
             extrude=Base.Vector(0,self.__wallThickness,0)
@@ -1379,6 +1385,7 @@ class GreenHouse(object):
             wall = wall.cut(miter)
             #self.miter = miter
         for window in range(0,2):
+            #print("*** -: window is ",window)
             if side=='Front':
                 windowOrigin = wallOrigin.add(
                     Base.Vector(self.__windowOffset+
@@ -1394,6 +1401,69 @@ class GreenHouse(object):
                                                             py*self.__windowPaneZStride)),
                                               norm).extrude(extrude)
                         wall = wall.cut(pane)
+                windowCenter = windowOrigin.add(
+                        Base.Vector(self.__windowWidth/2,0,
+                                    self.__windowTop +
+                                    self.__upperWindowOffset))
+                upperWindowArcC = Part.makeCircle(self.__upperWindowRadius,
+                                                 windowCenter,norm,
+                                                 180,360)
+                upperWindowArcL = Part.makeLine(
+                  windowCenter.add(Base.Vector(-self.__upperWindowRadius,0,0)),
+                  windowCenter.add(Base.Vector(self.__upperWindowRadius,0,0)))
+                upperWindowArc=Part.Face(Part.Wire([upperWindowArcC,
+                                                    upperWindowArcL])
+                                        ).extrude(extrude)
+                wall = wall.cut(upperWindowArc)
+                for b in range(1,8):
+                    #print("*** -: b is ",b)
+                    bangle = math.radians((b*self.__upperBarAngle))
+                    bangleCOS = math.cos(bangle)
+                    bangleSIN = math.sin(bangle)
+                    bangleCOS_M = math.cos(bangle+math.pi)
+                    bangleSIN_M = math.sin(bangle+math.pi)
+                    #print("*** -: bangleCOS is ",bangleCOS)
+                    #print("*** -: bangleSIN is ",bangleSIN)
+                    #print("*** -: bangleCOS_M is ",bangleCOS_M)
+                    #print("*** -: bangleSIN_M is ",bangleSIN_M)
+                    p = Base.Vector(self.__upperWindowRadius*bangleCOS,
+                                    0,
+                                    self.__upperWindowRadius*bangleSIN)
+                    barPoly = list()
+                    p1 = p.add(Base.Vector(self.__upperBarWidth*
+                                                bangleSIN_M,
+                                           0,
+                                           self.__upperBarWidth*
+                                                bangleCOS))
+                    p0 = p1
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = p.add(Base.Vector(self.__upperBarWidth*
+                                                bangleSIN,
+                                           0,
+                                           self.__upperBarWidth*
+                                                bangleCOS_M))
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = Base.Vector(self.__upperBarWidth*bangleSIN,
+                                     0,
+                                     self.__upperBarWidth*bangleCOS_M)
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = Base.Vector(self.__upperBarWidth*bangleSIN_M,
+                                     0,
+                                     self.__upperBarWidth*bangleCOS)
+                    barPoly.append(windowCenter.add(p1))
+                    barPoly.append(windowCenter.add(p0))
+                    #print("*** -: barPoly is ",barPoly)
+                    try:
+                        bar = Part.Face(Part.Wire(Part.makePolygon(barPoly))
+                                        ).extrude(extrude)
+                        
+                        wall = wall.fuse(bar)
+                    except Part.OCCError as e:
+                        print("*** GreenHouse.__wall(): bangle is ",bangle)
+                        print("*** GreenHouse.__wall(): p is ",p)
+                        print("*** GreenHouse.__wall(): barPoly is ",barPoly)
+                        print("*** GreenHouse.__wall(): Failed to create face from wire")
+                #self.miter = bar
             elif side=='Right':
                 windowOrigin = wallOrigin.add(
                     Base.Vector(0,-(self.__windowOffset+
@@ -1409,6 +1479,64 @@ class GreenHouse(object):
                                                              py*self.__windowPaneZStride)),
                                               norm).extrude(extrude)
                         wall = wall.cut(pane)
+                windowCenter = windowOrigin.add(
+                        Base.Vector(0,-self.__windowWidth/2,
+                                    self.__windowTop +
+                                    self.__upperWindowOffset))
+                upperWindowArcC = Part.makeCircle(self.__upperWindowRadius,
+                                                 windowCenter,norm,
+                                                 0,180)
+                upperWindowArcL = Part.makeLine(
+                  windowCenter.add(Base.Vector(0,-self.__upperWindowRadius,0)),
+                  windowCenter.add(Base.Vector(0,self.__upperWindowRadius,0)))
+                upperWindowArc=Part.Face(Part.Wire([upperWindowArcC,
+                                                    upperWindowArcL])
+                                        ).extrude(extrude)
+                wall = wall.cut(upperWindowArc)
+                for b in range(1,8):
+                    #print("*** -: b is ",b)
+                    bangle = math.radians((b*self.__upperBarAngle))
+                    bangleCOS = math.cos(bangle)
+                    bangleSIN = math.sin(bangle)
+                    bangleCOS_M = math.cos(bangle+math.pi)
+                    bangleSIN_M = math.sin(bangle+math.pi)
+                    #print("*** -: bangleCOS is ",bangleCOS)
+                    #print("*** -: bangleSIN is ",bangleSIN)
+                    #print("*** -: bangleCOS_M is ",bangleCOS_M)
+                    #print("*** -: bangleSIN_M is ",bangleSIN_M)
+                    p = Base.Vector(0,self.__upperWindowRadius*bangleCOS,
+                                    self.__upperWindowRadius*bangleSIN)
+                    barPoly = list()
+                    p1 = p.add(Base.Vector(0,self.__upperBarWidth*
+                                                bangleSIN_M,
+                                           self.__upperBarWidth*
+                                                bangleCOS))
+                    p0 = p1
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = p.add(Base.Vector(0,self.__upperBarWidth*
+                                                bangleSIN,
+                                           self.__upperBarWidth*
+                                                bangleCOS_M))
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = Base.Vector(0,self.__upperBarWidth*bangleSIN,
+                                     self.__upperBarWidth*bangleCOS_M)
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = Base.Vector(0,self.__upperBarWidth*bangleSIN_M,
+                                     self.__upperBarWidth*bangleCOS)
+                    barPoly.append(windowCenter.add(p1))
+                    barPoly.append(windowCenter.add(p0))
+                    #print("*** -: barPoly is ",barPoly)
+                    try:
+                        bar = Part.Face(Part.Wire(Part.makePolygon(barPoly))
+                                        ).extrude(extrude)
+                        
+                        wall = wall.fuse(bar)
+                    except Part.OCCError as e:
+                        print("*** GreenHouse.__wall(): bangle is ",bangle)
+                        print("*** GreenHouse.__wall(): p is ",p)
+                        print("*** GreenHouse.__wall(): barPoly is ",barPoly)
+                        print("*** GreenHouse.__wall(): Failed to create face from wire")
+                #self.miter = bar
             elif side=='Rear':
                 windowOrigin = wallOrigin.add(
                     Base.Vector((self.__windowOffset+
@@ -1425,9 +1553,73 @@ class GreenHouse(object):
                                                             py*self.__windowPaneZStride)),
                                               norm).extrude(extrude)
                         wall = wall.cut(pane)
+                windowCenter = windowOrigin.add(
+                        Base.Vector(self.__windowWidth/2,0,
+                                    self.__windowTop))
+                upperWindowArcC = Part.makeCircle(self.__upperWindowRadius,
+                                                 windowCenter,norm,
+                                                 0,180)
+                upperWindowArcL = Part.makeLine(
+                  windowCenter.add(Base.Vector(-self.__upperWindowRadius,0,0)),
+                  windowCenter.add(Base.Vector(self.__upperWindowRadius,0,0)))
+                upperWindowArc=Part.Face(Part.Wire([upperWindowArcC,
+                                                    upperWindowArcL])
+                                        ).extrude(extrude)
+                #self.miter = upperWindowArc
+                wall = wall.cut(upperWindowArc)
+                for b in range(1,8):
+                    #print("*** -: b is ",b)
+                    bangle = math.radians((b*self.__upperBarAngle))
+                    bangleCOS = math.cos(bangle)
+                    bangleSIN = math.sin(bangle)
+                    bangleCOS_M = math.cos(bangle+math.pi)
+                    bangleSIN_M = math.sin(bangle+math.pi)
+                    #print("*** -: bangleCOS is ",bangleCOS)
+                    #print("*** -: bangleSIN is ",bangleSIN)
+                    #print("*** -: bangleCOS_M is ",bangleCOS_M)
+                    #print("*** -: bangleSIN_M is ",bangleSIN_M)
+                    p = Base.Vector(self.__upperWindowRadius*bangleCOS,
+                                    0,
+                                    self.__upperWindowRadius*bangleSIN)
+                    barPoly = list()
+                    p1 = p.add(Base.Vector(self.__upperBarWidth*
+                                                bangleSIN_M,
+                                           0,
+                                           self.__upperBarWidth*
+                                                bangleCOS))
+                    p0 = p1
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = p.add(Base.Vector(self.__upperBarWidth*
+                                                bangleSIN,
+                                           0,
+                                           self.__upperBarWidth*
+                                                bangleCOS_M))
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = Base.Vector(self.__upperBarWidth*bangleSIN,
+                                     0,
+                                     self.__upperBarWidth*bangleCOS_M)
+                    barPoly.append(windowCenter.add(p1))
+                    p1 = Base.Vector(self.__upperBarWidth*bangleSIN_M,
+                                     0,
+                                     self.__upperBarWidth*bangleCOS)
+                    barPoly.append(windowCenter.add(p1))
+                    barPoly.append(windowCenter.add(p0))
+                    #print("*** -: barPoly is ",barPoly)
+                    try:
+                        bar = Part.Face(Part.Wire(Part.makePolygon(barPoly))
+                                        ).extrude(extrude)
+                        
+                        wall = wall.fuse(bar)
+                    except Part.OCCError as e:
+                        print("*** GreenHouse.__wall(): bangle is ",bangle)
+                        print("*** GreenHouse.__wall(): p is ",p)
+                        print("*** GreenHouse.__wall(): barPoly is ",barPoly)
+                        print("*** GreenHouse.__wall(): Failed to create face from wire")
+                #self.miter = bar
             else:
                 raise RuntimeError("unsuported side!")
         return(wall)
+
 class AddamsFamilyHouse(BirchPanel):
     __leftWallOrigin = Base.Vector(0,0,0)
     __leftWidth = 162.43698120117188 - (-269.84454345703125)
