@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250613.2029>
+#  Last Modified : <250614.1025>
 #
 #  Description	
 #
@@ -130,7 +130,7 @@ class LargeArchWindow(BirchPanel):
         objs.append(obj)
         Mesh.export(objs,filename)
     @classmethod
-    def LEDMountDPrint(cls,*,doc=None,filename='LargeArchWindowLEDMount.stl'):
+    def LEDMount3DPrint(cls,*,doc=None,filename='LargeArchWindowLEDMount.stl'):
         archOrig = Base.Vector(cls.__archMinorRadius,
                                cls.__bottomRectHeight,0)
         archMajor = archOrig.add(Base.Vector(0,cls.__archMajorRadius,0))
@@ -277,7 +277,7 @@ class LargeArchWindow(BirchPanel):
                                   self.__bottomRectWidth,
                                   origin.add(baseOffset).add(LEDMountOffset),
                                   baseNorm).extrude(extrudeLEDMount)
-        self.windowLEDMountTrim = self.windowLEDMount.cut(base.fuse(arch))
+        self.windowLEDMount = self.windowLEDMount.cut(base.fuse(arch))
     def Cut(self,wall):
         return wall.cut(self.windowCutout)
     def show(self,doc=None):
@@ -1262,7 +1262,9 @@ class GreenHouse(object):
     # Vector (274.43206787109375, 106.17420959472656, 88.98863220214844)
     # Vector (274.43206787109375, 106.17420959472656, -29.339580535888672)
     # Vector (156.03402709960938, 106.17420959472656, -29.339040756225586)
-    __wallThickness = (1/16)*25.4
+    __wallThickness = (1/8)*25.4
+    __wallIndent = (1/16)*25.4
+    
     __wallHeight = 106.17420959472656 - (-18.670608520507812)
     __length     = 274.43206787109375 - 156.03402709960938
     __width      = 88.99929809570312 - (-29.339580535888672)
@@ -1280,9 +1282,10 @@ class GreenHouse(object):
     __windowOffset = 162.48980712890625 - 156.03402709960938
     __windowBottom = -5.378434658050537 - (-18.670608520507812)
     __windowWidth = 211.28485107421875 - 162.48980712890625
+    __windowBarWidth = 167.42715454101562 - 166.847412109375
     __upperWindowOffset = 75.51575469970703-69.2083511352539
     __upperWindowRadius = (210.8865966796875-162.88238525390625)/2
-    __windowTop = 69.2083511352539-(-5.378434658050537)
+    __windowHeight = 69.2083511352539-(-5.378434658050537)
     __windowPaneWidth = 166.847412109375-162.4896697998047
     __windowPaneHeight = 1.3253087997436523 - (-5.378434658050537)
     __windowPaneXStride = 167.42715454101562 - 162.4896697998047
@@ -1324,6 +1327,7 @@ class GreenHouse(object):
         if side=='Front':
             norm=Base.Vector(0,1,0)
             extrude=Base.Vector(0,self.__wallThickness,0)
+            extrudeIndent=Base.Vector(0,self.__wallIndent,0)
             wallOrigin = self.origin
             width = self.__length+self.__wallThickness
             miter1Origin=Base.Vector(width-self.__wallThickness,
@@ -1336,6 +1340,7 @@ class GreenHouse(object):
         elif side=='Right':
             norm=Base.Vector(1,0,0)
             extrude=Base.Vector(self.__wallThickness,0,0)
+            extrudeIndent=Base.Vector(self.__wallIndent,0,0)
             wallOrigin = self.origin.add(Base.Vector(self.__length,self.__width,0))
             width = self.__width
             miter1Origin=Base.Vector(self.__wallThickness,
@@ -1353,6 +1358,7 @@ class GreenHouse(object):
         elif side=='Rear':
             norm=Base.Vector(0,-1,0)
             extrude=Base.Vector(0,-self.__wallThickness,0)
+            extrudeIndent=Base.Vector(0,-self.__wallIndent,0)
             wallOrigin = self.origin.add(Base.Vector(0,
                                                      self.__width,
                                                      self.__wallHeight))
@@ -1391,19 +1397,35 @@ class GreenHouse(object):
                     Base.Vector(self.__windowOffset+
                                     (window*self.__window2Offset),
                                 0,self.__windowBottom))
-                for py in range(10):
-                    for px in range(10):
-                        pane = Part.makePlane(self.__windowPaneHeight,
-                                              self.__windowPaneWidth,
-                                              windowOrigin.add(
-                                                Base.Vector(px*self.__windowPaneXStride,
-                                                            0,
-                                                            py*self.__windowPaneZStride)),
-                                              norm).extrude(extrude)
-                        wall = wall.cut(pane)
+                w =  Part.makePlane(self.__windowHeight,
+                                    self.__windowWidth,
+                                    windowOrigin,
+                                    norm).extrude(extrude)
+                wIndent =  Part.makePlane(self.__windowHeight+
+                                          self.__upperWindowOffset,
+                                    self.__windowWidth,
+                                    windowOrigin,
+                                    norm).extrude(extrudeIndent)
+                wall = wall.cut(w)
+                for py in range(1,10):
+                    bar = Part.makePlane(self.__windowBarWidth,
+                                         self.__windowWidth,
+                                         windowOrigin.add(
+                                            Base.Vector(0,0,
+                                                py*self.__windowPaneZStride)),
+                    norm).extrude(extrude)
+                    wall = wall.fuse(bar)
+                for px in range(1,10):
+                    bar = Part.makePlane(self.__windowHeight,
+                                         self.__windowBarWidth,
+                                         windowOrigin.add(
+                                            Base.Vector(px*self.__windowPaneXStride,
+                                                        0,0)),norm).extrude(extrude)
+                    #self.miter = bar
+                    wall = wall.fuse(bar)
                 windowCenter = windowOrigin.add(
                         Base.Vector(self.__windowWidth/2,0,
-                                    self.__windowTop +
+                                    self.__windowHeight +
                                     self.__upperWindowOffset))
                 upperWindowArcC = Part.makeCircle(self.__upperWindowRadius,
                                                  windowCenter,norm,
@@ -1414,6 +1436,10 @@ class GreenHouse(object):
                 upperWindowArc=Part.Face(Part.Wire([upperWindowArcC,
                                                     upperWindowArcL])
                                         ).extrude(extrude)
+                upperWindowArcIndent = Part.Face(Part.Wire([upperWindowArcC,
+                                                            upperWindowArcL])
+                                        ).extrude(extrudeIndent)
+                wIndent = wIndent.fuse(upperWindowArcIndent)
                 wall = wall.cut(upperWindowArc)
                 for b in range(1,8):
                     #print("*** -: b is ",b)
@@ -1463,25 +1489,45 @@ class GreenHouse(object):
                         print("*** GreenHouse.__wall(): p is ",p)
                         print("*** GreenHouse.__wall(): barPoly is ",barPoly)
                         print("*** GreenHouse.__wall(): Failed to create face from wire")
-                #self.miter = bar
+                #self.miter = upperWindowArcIndent
+                wall = wall.cut(wIndent)
             elif side=='Right':
                 windowOrigin = wallOrigin.add(
                     Base.Vector(0,-(self.__windowOffset+
                                     (window*self.__window2Offset)),
                                 self.__windowBottom))
-                for py in range(10):
-                    for px in range(10):
-                        pane = Part.makePlane(self.__windowPaneHeight,
-                                              self.__windowPaneWidth,
-                                              windowOrigin.add(
+                w =  Part.makePlane(self.__windowHeight,
+                                    self.__windowWidth,
+                                    windowOrigin,
+                                    norm).extrude(extrude)
+                wIndent =  Part.makePlane(self.__windowHeight+
+                                          self.__upperWindowOffset,
+                                    self.__windowWidth,
+                                    windowOrigin.add(
+                                        Base.Vector(self.__wallIndent,0,0)),
+                                    norm).extrude(extrudeIndent)
+                #self.miter = wIndent
+                wall = wall.cut(w)
+                for py in range(1,10):
+                    bar = Part.makePlane(self.__windowBarWidth,
+                                         self.__windowWidth,
+                                         windowOrigin.add(
+                                            Base.Vector(0,0,
+                                                        py*self.__windowPaneZStride)),
+                                         norm).extrude(extrude)
+                    wall = wall.fuse(bar)
+                for px in range(1,10):
+                    bar = Part.makePlane(self.__windowHeight,
+                                         self.__windowBarWidth,
+                                         windowOrigin.add(
                                                 Base.Vector (0,
                                                              -px*self.__windowPaneXStride,
-                                                             py*self.__windowPaneZStride)),
-                                              norm).extrude(extrude)
-                        wall = wall.cut(pane)
+                                                             0)),
+                                         norm).extrude(extrude)
+                    wall = wall.fuse(bar)
                 windowCenter = windowOrigin.add(
                         Base.Vector(0,-self.__windowWidth/2,
-                                    self.__windowTop +
+                                    self.__windowHeight +
                                     self.__upperWindowOffset))
                 upperWindowArcC = Part.makeCircle(self.__upperWindowRadius,
                                                  windowCenter,norm,
@@ -1492,6 +1538,22 @@ class GreenHouse(object):
                 upperWindowArc=Part.Face(Part.Wire([upperWindowArcC,
                                                     upperWindowArcL])
                                         ).extrude(extrude)
+                upperWindowArcCI = Part.makeCircle(self.__upperWindowRadius,
+                                                 windowCenter.add(
+                                                    Base.Vector(
+                                                        self.__wallIndent,
+                                                        0,0)),
+                                                 norm,
+                                                 0,180)
+                upperWindowArcLI = Part.makeLine(
+                  windowCenter.add(Base.Vector(self.__wallIndent,
+                                               -self.__upperWindowRadius,0)),
+                  windowCenter.add(Base.Vector(self.__wallIndent,
+                                               self.__upperWindowRadius,0)))
+                upperWindowArcIndent=Part.Face(Part.Wire([upperWindowArcCI,
+                                                    upperWindowArcLI])
+                                        ).extrude(extrudeIndent)
+                wIndent = wIndent.fuse(upperWindowArcIndent)
                 wall = wall.cut(upperWindowArc)
                 for b in range(1,8):
                     #print("*** -: b is ",b)
@@ -1537,25 +1599,46 @@ class GreenHouse(object):
                         print("*** GreenHouse.__wall(): barPoly is ",barPoly)
                         print("*** GreenHouse.__wall(): Failed to create face from wire")
                 #self.miter = bar
+                wall = wall.cut(wIndent)
             elif side=='Rear':
                 windowOrigin = wallOrigin.add(
                     Base.Vector((self.__windowOffset+
                                     (window*self.__window2Offset)),
-                                0,-(self.__wallHeight-(self.__windowBottom+
-                                                        self.__windowPaneZStride))))
-                for py in range(10):
-                    for px in range(10):
-                        pane = Part.makePlane(self.__windowPaneHeight,
-                                              self.__windowPaneWidth,
-                                              windowOrigin.add(
-                                                Base.Vector(px*self.__windowPaneXStride,
-                                                            0,
-                                                            py*self.__windowPaneZStride)),
-                                              norm).extrude(extrude)
-                        wall = wall.cut(pane)
+                                0,-(self.__wallHeight-
+                                    self.__windowHeight-
+                                    self.__windowBottom)))
+                w =  Part.makePlane(self.__windowHeight,
+                                    self.__windowWidth, 
+                                    windowOrigin,
+                                    norm).extrude(extrude)
+                wIndent =  Part.makePlane(self.__windowHeight+
+                                          self.__upperWindowOffset,
+                                    self.__windowWidth, 
+                                    windowOrigin.add(
+                                        Base.Vector(0,0,
+                                                    self.__upperWindowOffset)),
+                                    norm).extrude(extrudeIndent)
+                wall = wall.cut(w)
+                for py in range(1,10):
+                    bar = Part.makePlane(self.__windowBarWidth,
+                                         self.__windowWidth,
+                                         windowOrigin.add(
+                                            Base.Vector(0,0,
+                                                        -((py*self.__windowPaneZStride)+
+                                                          self.__windowBarWidth*2))),
+                                         norm).extrude(extrude)
+                    wall = wall.fuse(bar)
+                for px in range(1,10):
+                    bar = Part.makePlane(self.__windowHeight,
+                                         self.__windowBarWidth,
+                                         windowOrigin.add(
+                                            Base.Vector(px*self.__windowPaneXStride,
+                                            0,0)),
+                                         norm).extrude(extrude)
+                    wall = wall.fuse(bar)
                 windowCenter = windowOrigin.add(
                         Base.Vector(self.__windowWidth/2,0,
-                                    self.__windowTop))
+                                    self.__upperWindowOffset))
                 upperWindowArcC = Part.makeCircle(self.__upperWindowRadius,
                                                  windowCenter,norm,
                                                  0,180)
@@ -1565,6 +1648,10 @@ class GreenHouse(object):
                 upperWindowArc=Part.Face(Part.Wire([upperWindowArcC,
                                                     upperWindowArcL])
                                         ).extrude(extrude)
+                upperWindowArcIndent = Part.Face(Part.Wire([upperWindowArcC,
+                                                            upperWindowArcL])
+                                        ).extrude(extrudeIndent)
+                wIndent = wIndent.fuse(upperWindowArcIndent)
                 #self.miter = upperWindowArc
                 wall = wall.cut(upperWindowArc)
                 for b in range(1,8):
@@ -1616,6 +1703,7 @@ class GreenHouse(object):
                         print("*** GreenHouse.__wall(): barPoly is ",barPoly)
                         print("*** GreenHouse.__wall(): Failed to create face from wire")
                 #self.miter = bar
+                wall = wall.cut(wIndent)
             else:
                 raise RuntimeError("unsuported side!")
         return(wall)
