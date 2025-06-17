@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250614.1025>
+#  Last Modified : <250616.2046>
 #
 #  Description	
 #
@@ -1708,6 +1708,494 @@ class GreenHouse(object):
                 raise RuntimeError("unsuported side!")
         return(wall)
 
+class RoofSection(BirchPanel):
+    # Overhang points:
+    # Vector (-291.2991943359375, 191.2957000732422, 162.26939392089844)
+    # Vector (-287.65008544921875, 191.39491271972656, 159.75738525390625)
+    # Vector (-322.970458984375, 200.30540466308594, 202.69088745117188)
+    __overhangThickness = (1/8)*25.4
+    __overhangWidth = 80
+    __overhandWallOverlap = (1/8)*25.4
+    OverhangOffset = 80-((1/8)*25.4)
+    # Roof points:
+    # Vector (-297.5604553222656, 200.30540466308594, 171.80958557128906)
+    # Vector (-280.6936340332031, 278.30072021484375, 133.6685791015625)
+    __slopeDX = -280.6936340332031 - -297.5604553222656
+    __slopeDY = 171.80958557128906 - 133.6685791015625
+    __slopeDZ = 278.30072021484375 - 200.30540466308594
+    __roofSetBack = 202.69088745117188-171.80958557128906
+    @property
+    def __roofSlopeFrontNormal(self):
+        theta = math.atan2(self.__slopeDY,self.__slopeDZ)+math.pi
+        return Base.Vector(0,-math.cos(theta),math.sin(theta))
+    @property
+    def __roofSlopeFrontExtrude(self):
+        return self.__roofSlopeFrontNormal*BirchPanel.Thickness()
+    @property
+    def __roofSlopeFrontWidth(self):
+        return math.hypot(self.__slopeDY,self.__slopeDZ)
+    @property
+    def __roofSlopeRearNormal(self):
+        theta = math.atan2(self.__slopeDY,self.__slopeDZ)
+        return Base.Vector(0,math.cos(theta),math.sin(theta))
+    @property
+    def __roofSlopeRearExtrude(self):
+        return self.__roofSlopeRearNormal*BirchPanel.Thickness()
+    @property
+    def __roofSlopeRearWidth(self):
+        return math.hypot(self.__slopeDZ,self.__slopeDY)
+    @property
+    def __roofSlopeRightNormal(self):
+        theta = math.atan2(self.__slopeDX,self.__slopeDZ)
+        return Base.Vector(math.cos(theta),0,math.sin(theta))
+    @property
+    def __roofSlopeRightExtrude(self):
+        return self.__roofSlopeRightNormal*BirchPanel.Thickness()
+    @property
+    def __roofSlopeRightWidth(self):
+        return math.hypot(self.__slopeDZ,self.__slopeDX)
+    @property
+    def __roofSlopeLeftNormal(self):
+        theta = math.atan2(self.__slopeDX,self.__slopeDZ)
+        return Base.Vector(math.cos(theta),0,-math.sin(theta))
+    @property
+    def __roofSlopeLeftExtrude(self):
+        return self.__roofSlopeLeftNormal*BirchPanel.Thickness()
+    @property
+    def __roofSlopeLeftWidth(self):
+        return math.hypot(self.__slopeDZ,self.__slopeDX)
+    # Roof fence points:
+    # Vector (-275.3706970214844, 278.30072021484375, 128.3632049560547)
+    # Vector (-275.3706970214844, 301.8320617675781, 128.3293914794922)
+    __fenceSetback = 5.3229370117187
+    __fenceHelght = 301.8320617675781-278.30072021484375
+    def __init__(self,name,origin,length,*,braces=[],side='Front',
+                 start='Square',end='Square'):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        self.side = side
+        miterCutStart = None
+        miterCutEnd   = None
+        if side == 'Front':
+            roofnorm = self.__roofSlopeFrontNormal
+            roofH = length
+            roofW = self.__roofSlopeFrontWidth
+            slopeextrude = self.__roofSlopeFrontExtrude
+            overhangH = length
+            overhangW = self.__overhangWidth
+            roofOrigin = self.origin.add(
+                        Base.Vector(0,
+                                    self.__roofSetBack,
+                                    self.__overhangThickness))
+            if len(braces) > 0:
+                bracenorm = Base.Vector(1,0,0)
+                braceextrude = bracenorm*BirchPanel.Thickness()
+                braceCutExtrude = slopeextrude*-self.__slopeDX
+                braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
+                                          roofH,
+                                          roofOrigin.add(
+                                            Base.Vector(0,
+                                                BirchPanel.Thickness()-1.2,
+                                                -BirchPanel.Thickness())),
+                                          roofnorm).extrude(braceCutExtrude)
+                braceOrigins = list()
+                braceH = self.__overhangWidth-self.__roofSetBack
+                braceW = self.__slopeDZ-BirchPanel.Thickness()
+                for b in braces:
+                    braceOrigins.append(self.origin.add( 
+                                Base.Vector(b,
+                                            self.__overhangWidth,
+                                            self.__overhangThickness)))
+            if start=='Square':
+                pass
+            elif start=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(0,
+                                    mwidth-self.__overhangThickness*2,
+                                    mwidth))
+                miterNorm=Base.Vector(1,-1,0)
+                miterExtrude=miterNorm*self.__overhangWidth
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif start=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(mheight,
+                                    mwidth-self.__overhangThickness*2,
+                                    mwidth))
+                miterNorm=Base.Vector(-1,-1,0)
+                miterExtrude=miterNorm*mheight
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+            if end=='Square':
+                pass
+            elif end=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(length-mheight+self.__overhangThickness-2,
+                                    0,
+                                    mwidth))
+                miterNorm=Base.Vector(1,1,0)
+                miterExtrude=miterNorm*self.__overhangWidth
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif end=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(length-mheight+1.2,
+                                    mwidth-self.__overhangThickness*2,
+                                    mwidth))
+                miterNorm=Base.Vector(-1,1,0)
+                miterExtrude=miterNorm*-mheight
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+        elif side == 'Left':
+            roofnorm = self.__roofSlopeLeftNormal
+            roofW = self.__roofSlopeLeftWidth
+            roofH = length
+            slopeextrude = self.__roofSlopeLeftExtrude
+            overhangH = self.__overhangWidth
+            overhangW = length
+            roofOrigin = self.origin.add(
+                        Base.Vector(self.__roofSetBack,length,
+                                    self.__overhangThickness))
+            if len(braces) > 0:
+                bracenorm = Base.Vector(0,-1,0)
+                braceextrude = bracenorm*BirchPanel.Thickness()
+                braceCutExtrude = slopeextrude*-self.__slopeDY
+                braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
+                                          roofH,
+                                          roofOrigin.add(
+                                            Base.Vector(BirchPanel.Thickness()-
+                                                 .62,
+                                                 0,
+                                                -BirchPanel.Thickness())),
+                                          roofnorm).extrude(braceCutExtrude)
+                #self.braceCut = braceCut
+                braceOrigins = list()
+                braceH = self.__overhangWidth-self.__roofSetBack
+                braceW = self.__slopeDZ-BirchPanel.Thickness()
+                for b in braces:
+                    braceOrigins.append(self.origin.add( 
+                                Base.Vector(self.__roofSetBack,
+                                            b,
+                                            self.__overhangThickness+braceW)))
+            if start=='Square':
+                pass
+            elif start=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(0,
+                                    mwidth-self.__overhangThickness*2,
+                                    mwidth))
+                miterNorm=Base.Vector(1,-1,0)
+                miterExtrude=miterNorm*self.__overhangWidth
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif start=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(mheight+
+                                    self.__overhangWidth-
+                                    self.__roofSetBack+
+                                    self.__overhangThickness*2.5,
+                                    23.5, 
+                                    mwidth))
+                miterNorm=Base.Vector(-1,-1,0)
+                miterExtrude=miterNorm*mheight
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+            if end=='Square':
+                pass
+            elif end=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(-57.44,
+                                    length-22.6,
+                                    mwidth))
+                miterNorm=Base.Vector(1,1,0)
+                miterExtrude=miterNorm*self.__overhangWidth
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif end=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(0,
+                                    length,#-mheight+1.2,
+                                    mwidth))
+                miterNorm=Base.Vector(-1,1,0)
+                miterExtrude=miterNorm*-mheight
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+        elif side == 'Right':
+            roofnorm = self.__roofSlopeRightNormal
+            roofW = self.__roofSlopeRightWidth
+            roofH = length
+            slopeextrude = self.__roofSlopeRightExtrude
+            overhangH = self.__overhangWidth
+            overhangW = length
+            roofOrigin = self.origin.add(
+                        Base.Vector(self.__overhangWidth-(
+                                        self.__roofSetBack+
+                                        self.__overhangThickness),
+                                    length,
+                                   self.__overhangThickness-.68))
+            if len(braces) > 0:
+                bracenorm = Base.Vector(0,1,0)
+                braceextrude = bracenorm*BirchPanel.Thickness()
+                braceCutExtrude = slopeextrude*self.__slopeDY
+                braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
+                                          roofH,
+                                          roofOrigin.add(
+                                            Base.Vector(0,
+                                                BirchPanel.Thickness(),
+                                                0)),
+                                          roofnorm).extrude(braceCutExtrude)
+                braceOrigins = list()
+                braceH = self.__overhangWidth-self.__roofSetBack
+                braceW = self.__slopeDZ-BirchPanel.Thickness()
+                for b in braces:
+                    braceOrigins.append(self.origin.add( 
+                                Base.Vector(0,
+                                            b,
+                                            BirchPanel.Thickness())))
+            if start=='Square':
+                pass
+            elif start=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(mheight+
+                                    self.__overhangWidth-
+                                    self.__roofSetBack+
+                                    self.__overhangThickness*2.5,
+                                    23.5, 
+                                    mwidth))
+                miterNorm=Base.Vector(-1,-1,0)
+                miterExtrude=miterNorm*mheight
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif start=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(0,
+                                    81.17, 
+                                    mwidth))
+                miterNorm=Base.Vector(1,-1,0)
+                miterExtrude=miterNorm*mheight
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+            if end=='Square':
+                pass
+            elif end=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(57.4,
+                                    length+57.4, 
+                                    mwidth))
+                miterNorm=Base.Vector(1,-1,0)
+                miterExtrude=miterNorm*mheight
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif end=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(self.__overhangWidth,
+                                    length, 
+                                    mwidth))
+                miterNorm=Base.Vector(-1,-1,0)
+                miterExtrude=miterNorm*mheight
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+            #self.miter = miterCutEnd
+        elif side == 'Rear':
+            roofnorm = self.__roofSlopeRearNormal
+            roofH = length
+            roofW = self.__roofSlopeRearWidth
+            slopeextrude = self.__roofSlopeRearExtrude
+            overhangH = length
+            overhangW = self.__overhangWidth
+            roofOrigin = self.origin.add(
+                        Base.Vector(0,self.__overhangWidth-self.__roofSetBack,
+                                    self.__overhangThickness*.5))
+            if len(braces) > 0:
+                bracenorm = Base.Vector(-1,0,0)
+                braceextrude = bracenorm*BirchPanel.Thickness()
+                braceCutExtrude = slopeextrude*self.__slopeDX
+                braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
+                                          roofH,
+                                          roofOrigin.add(
+                                            Base.Vector(0,
+                                                BirchPanel.Thickness()-1.2,
+                                                -BirchPanel.Thickness())),
+                                          roofnorm).extrude(braceCutExtrude)
+                braceOrigins = list()
+                braceH = self.__overhangWidth-self.__roofSetBack
+                braceW = self.__slopeDZ-BirchPanel.Thickness()
+                for b in braces:
+                    braceOrigins.append(self.origin.add( 
+                                Base.Vector(b,
+                                            braceH,
+                                            self.__overhangThickness+braceW)))
+            if start=='Square':
+                pass
+            elif start=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(self.__overhangWidth,
+                                    mwidth-self.__overhangThickness*2,
+                                    mwidth))
+                miterNorm=Base.Vector(-1,-1,0)
+                miterExtrude=miterNorm*self.__overhangWidth
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif start=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(23.77,
+                                    -57.4,
+                                    mwidth))
+                miterNorm=Base.Vector(-1,1,0)
+                miterExtrude=miterNorm*mheight
+                miterCutStart = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+            if end=='Square':
+                pass
+            elif end=='InnerMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(length-mheight+self.__overhangThickness-2,
+                                    0,
+                                    mwidth))
+                miterNorm=Base.Vector(1,1,0)
+                miterExtrude=miterNorm*self.__overhangWidth
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            elif end=='OuterMiter':
+                mheight = self.__slopeDZ+self.__overhangThickness
+                mwidth = self.__overhangWidth+self.__overhangThickness*2
+                miterOrigin=self.origin.add(
+                        Base.Vector(length-mheight+1.2,
+                                    mwidth-self.__overhangThickness*2,
+                                    mwidth))
+                miterNorm=Base.Vector(-1,1,0)
+                miterExtrude=miterNorm*-mheight
+                miterCutEnd = Part.makePlane(mheight,
+                                               mwidth,
+                                               miterOrigin,
+                                               miterNorm).extrude(miterExtrude)
+            else:
+                raise RuntimeError("Unsupported Miter")
+        else:
+            raise RuntimeError("unsuported side!")
+        self.overhang = Part.makePlane(overhangH,
+                                       overhangW,
+                                       self.origin
+                                      ).extrude(
+                                     Base.Vector(0,0,self.__overhangThickness))
+        self.roofpanel = Part.makePlane(roofW,
+                                        roofH,
+                                        roofOrigin,
+                                        roofnorm).extrude(slopeextrude)
+        self.braces = list()
+        for b in braceOrigins:
+            brace = Part.makePlane(braceW,
+                                   braceH,
+                                   b,
+                                   bracenorm).extrude(braceextrude)
+            self.braces.append(brace.cut(braceCut))
+        if miterCutStart != None:
+            self.overhang = self.overhang.cut(miterCutStart)
+            self.roofpanel = self.roofpanel.cut(miterCutStart)
+        if miterCutEnd != None:
+            self.overhang = self.overhang.cut(miterCutEnd)
+            self.roofpanel = self.roofpanel.cut(miterCutEnd)
+        
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name+"_Overhang")
+        obj.Shape = self.overhang
+        obj.Label=self.name+"_Overhang"
+        obj.ViewObject.ShapeColor=self.Color
+        obj = doc.addObject("Part::Feature",self.name+"_Roof")
+        obj.Shape = self.roofpanel
+        obj.Label=self.name+"_Roof"
+        obj.ViewObject.ShapeColor=self.Color
+        for i,b in enumerate(self.braces):
+            n = self.name+"_Brace%02d"%(i)
+            obj = doc.addObject("Part::Feature",n)
+            obj.Shape = b
+            obj.Label = n
+            obj.ViewObject.ShapeColor=self.Color
+        try:
+            obj = doc.addObject("Part::Feature","Miter")
+            obj.Shape = self.miter
+            obj.ViewObject.ShapeColor=(1.0, 0.0, 0.0)
+        except AttributeError as e:
+            doc.removeObject(obj.Label)
+
 class AddamsFamilyHouse(BirchPanel):
     __leftWallOrigin = Base.Vector(0,0,0)
     __leftWidth = 162.43698120117188 - (-269.84454345703125)
@@ -1809,6 +2297,9 @@ class AddamsFamilyHouse(BirchPanel):
     __greenhouseOrigin = Base.Vector(156.03402709960938-(-293.39385986328125),
                                      162.4369812011718-89.00996398925781,
                                      0)
+    # Roof Overhang points
+    # Vector (-291.2991943359375, 191.2957000732422, 162.26939392089844)
+    
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -2056,9 +2547,15 @@ if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
     doc = App.newDocument("AddamsFamilyHouse")
-    AddamsFamilyHouse = AddamsFamilyHouse("AddamsFamilyHouse",Base.Vector(0,0,0))
-    AddamsFamilyHouse.show(doc)
-    Gui.activeDocument().activeView().viewFront()
+    #AddamsFamilyHouse = AddamsFamilyHouse("AddamsFamilyHouse",Base.Vector(0,0,0))
+    #AddamsFamilyHouse.show(doc)
+    RightRoofI = RoofSection("RightRoofI",Base.Vector(0,0,0),200,side='Right',
+                            braces=[100],end='InnerMiter')
+    RightRoofI.show(doc)
+    RightRoofO = RoofSection("RightRoofO",Base.Vector(200,0,0),200,side='Right',
+                            braces=[100],end='OuterMiter')
+    RightRoofO.show(doc)
+    Gui.activeDocument().activeView().viewTop()
     Gui.SendMsgToActiveView("ViewFit")
     #LargeArchWindow.Trim3DPrint()
-    #LargeArchWindow.LEDMountDPrint()
+    #LargeArchWindow.LEDMount3DPrint()
