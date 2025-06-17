@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250616.2046>
+#  Last Modified : <250617.1636>
 #
 #  Description	
 #
@@ -1715,55 +1715,58 @@ class RoofSection(BirchPanel):
     # Vector (-322.970458984375, 200.30540466308594, 202.69088745117188)
     __overhangThickness = (1/8)*25.4
     __overhangWidth = 80
-    __overhandWallOverlap = (1/8)*25.4
-    OverhangOffset = 80-((1/8)*25.4)
+    __overhangWallOverlap = (1/8)*25.4
+    OverhangOffset = 31-((1/8)*25.4)
     # Roof points:
     # Vector (-297.5604553222656, 200.30540466308594, 171.80958557128906)
     # Vector (-280.6936340332031, 278.30072021484375, 133.6685791015625)
     __slopeDX = -280.6936340332031 - -297.5604553222656
     __slopeDY = 171.80958557128906 - 133.6685791015625
+    @property
+    def __slopeDXY(self):
+        return (self.__slopeDX+self.__slopeDY)/2
     __slopeDZ = 278.30072021484375 - 200.30540466308594
     __roofSetBack = 202.69088745117188-171.80958557128906
     @property
     def __roofSlopeFrontNormal(self):
-        theta = math.atan2(self.__slopeDY,self.__slopeDZ)+math.pi
+        theta = math.atan2(self.__slopeDXY,self.__slopeDZ)+math.pi
         return Base.Vector(0,-math.cos(theta),math.sin(theta))
     @property
     def __roofSlopeFrontExtrude(self):
         return self.__roofSlopeFrontNormal*BirchPanel.Thickness()
     @property
     def __roofSlopeFrontWidth(self):
-        return math.hypot(self.__slopeDY,self.__slopeDZ)
+        return math.hypot(self.__slopeDXY,self.__slopeDZ)
     @property
     def __roofSlopeRearNormal(self):
-        theta = math.atan2(self.__slopeDY,self.__slopeDZ)
+        theta = math.atan2(self.__slopeDXY,self.__slopeDZ)
         return Base.Vector(0,math.cos(theta),math.sin(theta))
     @property
     def __roofSlopeRearExtrude(self):
         return self.__roofSlopeRearNormal*BirchPanel.Thickness()
     @property
     def __roofSlopeRearWidth(self):
-        return math.hypot(self.__slopeDZ,self.__slopeDY)
+        return math.hypot(self.__slopeDZ,self.__slopeDXY)
     @property
     def __roofSlopeRightNormal(self):
-        theta = math.atan2(self.__slopeDX,self.__slopeDZ)
+        theta = math.atan2(self.__slopeDXY,self.__slopeDZ)
         return Base.Vector(math.cos(theta),0,math.sin(theta))
     @property
     def __roofSlopeRightExtrude(self):
         return self.__roofSlopeRightNormal*BirchPanel.Thickness()
     @property
     def __roofSlopeRightWidth(self):
-        return math.hypot(self.__slopeDZ,self.__slopeDX)
+        return math.hypot(self.__slopeDZ,self.__slopeDXY)
     @property
     def __roofSlopeLeftNormal(self):
-        theta = math.atan2(self.__slopeDX,self.__slopeDZ)
+        theta = math.atan2(self.__slopeDXY,self.__slopeDZ)
         return Base.Vector(math.cos(theta),0,-math.sin(theta))
     @property
     def __roofSlopeLeftExtrude(self):
         return self.__roofSlopeLeftNormal*BirchPanel.Thickness()
     @property
     def __roofSlopeLeftWidth(self):
-        return math.hypot(self.__slopeDZ,self.__slopeDX)
+        return math.hypot(self.__slopeDZ,self.__slopeDXY)
     # Roof fence points:
     # Vector (-275.3706970214844, 278.30072021484375, 128.3632049560547)
     # Vector (-275.3706970214844, 301.8320617675781, 128.3293914794922)
@@ -1792,7 +1795,7 @@ class RoofSection(BirchPanel):
             if len(braces) > 0:
                 bracenorm = Base.Vector(1,0,0)
                 braceextrude = bracenorm*BirchPanel.Thickness()
-                braceCutExtrude = slopeextrude*-self.__slopeDX
+                braceCutExtrude = slopeextrude*-self.__slopeDXY
                 braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
                                           roofH,
                                           roofOrigin.add(
@@ -1881,7 +1884,7 @@ class RoofSection(BirchPanel):
             if len(braces) > 0:
                 bracenorm = Base.Vector(0,-1,0)
                 braceextrude = bracenorm*BirchPanel.Thickness()
-                braceCutExtrude = slopeextrude*-self.__slopeDY
+                braceCutExtrude = slopeextrude*-self.__slopeDXY
                 braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
                                           roofH,
                                           roofOrigin.add(
@@ -1978,7 +1981,7 @@ class RoofSection(BirchPanel):
             if len(braces) > 0:
                 bracenorm = Base.Vector(0,1,0)
                 braceextrude = bracenorm*BirchPanel.Thickness()
-                braceCutExtrude = slopeextrude*self.__slopeDY
+                braceCutExtrude = slopeextrude*self.__slopeDXY
                 braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
                                           roofH,
                                           roofOrigin.add(
@@ -2071,7 +2074,7 @@ class RoofSection(BirchPanel):
             if len(braces) > 0:
                 bracenorm = Base.Vector(-1,0,0)
                 braceextrude = bracenorm*BirchPanel.Thickness()
-                braceCutExtrude = slopeextrude*self.__slopeDX
+                braceCutExtrude = slopeextrude*self.__slopeDXY
                 braceCut = Part.makePlane(roofW+BirchPanel.Thickness(),
                                           roofH,
                                           roofOrigin.add(
@@ -2159,12 +2162,13 @@ class RoofSection(BirchPanel):
                                         roofOrigin,
                                         roofnorm).extrude(slopeextrude)
         self.braces = list()
-        for b in braceOrigins:
-            brace = Part.makePlane(braceW,
-                                   braceH,
-                                   b,
-                                   bracenorm).extrude(braceextrude)
-            self.braces.append(brace.cut(braceCut))
+        if len(braces) > 0:
+            for b in braceOrigins:
+                brace = Part.makePlane(braceW,
+                                       braceH,
+                                       b,
+                                       bracenorm).extrude(braceextrude)
+                self.braces.append(brace.cut(braceCut))
         if miterCutStart != None:
             self.overhang = self.overhang.cut(miterCutStart)
             self.roofpanel = self.roofpanel.cut(miterCutStart)
@@ -2299,7 +2303,19 @@ class AddamsFamilyHouse(BirchPanel):
                                      0)
     # Roof Overhang points
     # Vector (-291.2991943359375, 191.2957000732422, 162.26939392089844)
+    # Vector (-291.44384765625, 200.30540466308594, 162.4363250732422)
+    # Vector (-322.970458984375, 200.30540466308594, 202.69088745117188)
+    # Vector (-291.44384765625, 200.30540466308594, -269.8438415527344)
+    # Vector (-173.72952270507812, 197.5101318359375, 202.69088745117188)
+    # Vector (-173.72952270507812, 197.5101318359375, 156.0223846435547)
     
+    __roofOverhangXOffset = 40
+    __roofOverhangYOffset = 40
+    __rootOverhangZOffset = 200.30540466308594 - -18.670610427856445
+    __leftRoofLength = 202.69088745117188 - -269.8438415527344
+    __leftProtrudeFrontRoofLength = -173.72952270507812 - -322.970458984375
+    __leftProtrudeRightRoofLength = 202.69088745117188-156.0223846435547+94.06
+    __mainFrontWallRoofLength2 = 449.68-330.44 + RoofSection.OverhangOffset
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -2521,6 +2537,68 @@ class AddamsFamilyHouse(BirchPanel):
         self.rightWallProtrusionRO.Cut(self.rightWall2)
         self.greenhouse = GreenHouse(name+"_Greenhouse",
                                      origin.add(self.__greenhouseOrigin))
+        leftroofOrigin = self.origin.add(
+                Base.Vector(-self.__roofOverhangXOffset,
+                            -self.__roofOverhangYOffset,
+                            self.__rootOverhangZOffset))
+        self.leftRoof = RoofSection(name+"_LeftRoof",
+                                    leftroofOrigin,
+                                    self.__leftRoofLength,
+                                    side='Left',
+                                    braces=[100,200,300,400],
+                                    start='OuterMiter')
+        self.leftProtrudeFrontRoof = \
+            RoofSection(name+"_LeftProtrudeFrontRoof",
+                        leftroofOrigin.add(Base.Vector(-1.17,0.0)),
+                        self.__leftProtrudeFrontRoofLength,
+                        side='Front',
+                        start='OuterMiter',end='OuterMiter')
+        self.leftProtrudeRightRoof = \
+            RoofSection(name+"_LeftProtrudeRightRoof",
+                        leftroofOrigin.add(
+                            Base.Vector(self.__leftProtrudeFrontRoofLength-
+                                        81.17,
+                                        -1.17,0)),
+                        self.__leftProtrudeRightRoofLength,
+                        side='Right',
+                        start='OuterMiter',end='InnerMiter')
+        mainFrontWallRoofOrigin1 = mainWallOrigin.add(
+                            Base.Vector(-self.__roofOverhangXOffset-
+                                        BirchPanel.Thickness()*3+.55,
+                                        -self.__roofOverhangYOffset+
+                                        BirchPanel.Thickness()*4-.56,
+                                        self.__rootOverhangZOffset))
+        mainFrontWallRoofLength1 = towerOffsetOrigin.x- \
+                        mainFrontWallRoofOrigin1.x - \
+                        self.__towerWidth + \
+                        BirchPanel.Thickness()
+        self.mainFrontWallRoof1 = \
+            RoofSection(name+"_MainFrontWallRoof1",
+                        mainFrontWallRoofOrigin1,
+                        mainFrontWallRoofLength1,
+                        side='Front',
+                        braces=[100,200],
+                        start='InnerMiter')
+        mainFrontWallRoofOrigin2 = mainFrontWallRoofOrigin1.add(
+                Base.Vector(mainFrontWallRoofLength1+self.__towerWidth,0,0))
+        self.mainFrontWallRoof2 = \
+            RoofSection(name+"_MainFrontWallRoof2",
+                        mainFrontWallRoofOrigin2,
+                        self.__mainFrontWallRoofLength2,
+                        side='Front',
+                        braces=[65],
+                        end='OuterMiter')
+        rightWallRoofOrigin1 = mainFrontWallRoofOrigin2.add(
+                Base.Vector(self.__mainFrontWallRoofLength2-80,-1.17,0))
+        rightWallRoofLength1 = self.__rightWidth1+81.21
+        self.rightWallRoof1 = \
+            RoofSection(name+"_RightWallRoof1",
+                        rightWallRoofOrigin1,
+                        rightWallRoofLength1,
+                        side='Right',
+                        braces=[100,200],
+                        start='OuterMiter',
+                        end='InnerMiter')
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2542,19 +2620,19 @@ class AddamsFamilyHouse(BirchPanel):
         self.rightWallProtrusionRO.show(doc)
         self.rightWall2.show(doc)
         self.greenhouse.show(doc)
-        
+        self.leftRoof.show(doc)
+        self.leftProtrudeFrontRoof.show(doc)
+        self.leftProtrudeRightRoof.show(doc)
+        self.mainFrontWallRoof1.show(doc)
+        self.mainFrontWallRoof2.show(doc)
+        self.rightWallRoof1.show(doc)
+
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
     doc = App.newDocument("AddamsFamilyHouse")
-    #AddamsFamilyHouse = AddamsFamilyHouse("AddamsFamilyHouse",Base.Vector(0,0,0))
-    #AddamsFamilyHouse.show(doc)
-    RightRoofI = RoofSection("RightRoofI",Base.Vector(0,0,0),200,side='Right',
-                            braces=[100],end='InnerMiter')
-    RightRoofI.show(doc)
-    RightRoofO = RoofSection("RightRoofO",Base.Vector(200,0,0),200,side='Right',
-                            braces=[100],end='OuterMiter')
-    RightRoofO.show(doc)
+    AddamsFamilyHouse = AddamsFamilyHouse("AddamsFamilyHouse",Base.Vector(0,0,0))
+    AddamsFamilyHouse.show(doc)
     Gui.activeDocument().activeView().viewTop()
     Gui.SendMsgToActiveView("ViewFit")
     #LargeArchWindow.Trim3DPrint()
