@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250617.1636>
+#  Last Modified : <250619.1651>
 #
 #  Description	
 #
@@ -2069,7 +2069,8 @@ class RoofSection(BirchPanel):
             overhangH = length
             overhangW = self.__overhangWidth
             roofOrigin = self.origin.add(
-                        Base.Vector(0,self.__overhangWidth-self.__roofSetBack,
+                        Base.Vector(0,self.__overhangWidth-self.__roofSetBack-
+                                    self.__overhangThickness,
                                     self.__overhangThickness*.5))
             if len(braces) > 0:
                 bracenorm = Base.Vector(-1,0,0)
@@ -2126,11 +2127,11 @@ class RoofSection(BirchPanel):
                 mheight = self.__slopeDZ+self.__overhangThickness
                 mwidth = self.__overhangWidth+self.__overhangThickness*2
                 miterOrigin=self.origin.add(
-                        Base.Vector(length-mheight+self.__overhangThickness-2,
-                                    0,
+                        Base.Vector(length-mheight+1.2,
+                                    mwidth-self.__overhangThickness*2,
                                     mwidth))
-                miterNorm=Base.Vector(1,1,0)
-                miterExtrude=miterNorm*self.__overhangWidth
+                miterNorm=Base.Vector(-1,1,0)
+                miterExtrude=miterNorm*-mheight
                 miterCutEnd = Part.makePlane(mheight,
                                                mwidth,
                                                miterOrigin,
@@ -2139,11 +2140,11 @@ class RoofSection(BirchPanel):
                 mheight = self.__slopeDZ+self.__overhangThickness
                 mwidth = self.__overhangWidth+self.__overhangThickness*2
                 miterOrigin=self.origin.add(
-                        Base.Vector(length-mheight+1.2,
-                                    mwidth-self.__overhangThickness*2,
+                        Base.Vector(length-mheight+self.__overhangThickness-2,
+                                    0,
                                     mwidth))
-                miterNorm=Base.Vector(-1,1,0)
-                miterExtrude=miterNorm*-mheight
+                miterNorm=Base.Vector(1,1,0)
+                miterExtrude=miterNorm*self.__overhangWidth
                 miterCutEnd = Part.makePlane(mheight,
                                                mwidth,
                                                miterOrigin,
@@ -2599,6 +2600,36 @@ class AddamsFamilyHouse(BirchPanel):
                         braces=[100,200],
                         start='OuterMiter',
                         end='InnerMiter')
+        rightWallProtrusionRoofOrigin = rightWallRoofOrigin1.add(
+            Base.Vector(0,rightWallRoofLength1-80,0))
+        rightWallProtrusionRoofLength = self.__rightProtrusionOWidth+80
+        self.rightWallProtrusionLORoof = \
+            RoofSection(name+"_RightWallProtrusionLORoof",
+                        rightWallProtrusionRoofOrigin,
+                        rightWallProtrusionRoofLength,
+                        braces=[rightWallProtrusionRoofLength/2],
+                        side='Front',
+                        start='InnerMiter',end='OuterMiter')
+        rightWallProtrusionRoofOrigin = rightWallProtrusionRoofOrigin.add(
+            Base.Vector(rightWallProtrusionRoofLength-80,-1.14,0))
+        rightWallProtrusionRoofLength = self.__rightProtrusionWidth+56.77
+        self.rightWallProtrusionRoof = \
+            RoofSection(name+"_RightWallProtrusionRoof",
+                        rightWallProtrusionRoofOrigin,
+                        rightWallProtrusionRoofLength,
+                        braces=[rightWallProtrusionRoofLength/2],
+                        side='Right',
+                        start='OuterMiter',end='OuterMiter')
+        rightWallProtrusionRoofOrigin = rightWallProtrusionRoofOrigin.add(
+            Base.Vector(-58.5,rightWallProtrusionRoofLength-80,0))
+        rightWallProtrusionRoofLength = self.__rightProtrusionOWidth+80
+        self.rightWallProtrusionRORoof = \
+            RoofSection(name+"_RightWallProtrusionRORoof",
+                        rightWallProtrusionRoofOrigin,
+                        rightWallProtrusionRoofLength,
+                        braces=[rightWallProtrusionRoofLength/2],
+                        side='Rear',
+                        end='OuterMiter', start='InnerMiter')
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2626,6 +2657,9 @@ class AddamsFamilyHouse(BirchPanel):
         self.mainFrontWallRoof1.show(doc)
         self.mainFrontWallRoof2.show(doc)
         self.rightWallRoof1.show(doc)
+        self.rightWallProtrusionLORoof.show(doc)
+        self.rightWallProtrusionRoof.show(doc)
+        self.rightWallProtrusionRORoof.show(doc)
 
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
