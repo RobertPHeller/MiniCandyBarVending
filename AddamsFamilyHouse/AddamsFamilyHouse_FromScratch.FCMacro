@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250619.1651>
+#  Last Modified : <250619.2037>
 #
 #  Description	
 #
@@ -2553,6 +2553,7 @@ class AddamsFamilyHouse(BirchPanel):
                         leftroofOrigin.add(Base.Vector(-1.17,0.0)),
                         self.__leftProtrudeFrontRoofLength,
                         side='Front',
+                        braces=[self.__leftProtrudeFrontRoofLength/2],
                         start='OuterMiter',end='OuterMiter')
         self.leftProtrudeRightRoof = \
             RoofSection(name+"_LeftProtrudeRightRoof",
@@ -2561,6 +2562,7 @@ class AddamsFamilyHouse(BirchPanel):
                                         81.17,
                                         -1.17,0)),
                         self.__leftProtrudeRightRoofLength,
+                        braces=[self.__leftProtrudeRightRoofLength/2],
                         side='Right',
                         start='OuterMiter',end='InnerMiter')
         mainFrontWallRoofOrigin1 = mainWallOrigin.add(
@@ -2578,7 +2580,8 @@ class AddamsFamilyHouse(BirchPanel):
                         mainFrontWallRoofOrigin1,
                         mainFrontWallRoofLength1,
                         side='Front',
-                        braces=[100,200],
+                        braces=[100,200,mainFrontWallRoofLength1-
+                                        BirchPanel.Thickness()],
                         start='InnerMiter')
         mainFrontWallRoofOrigin2 = mainFrontWallRoofOrigin1.add(
                 Base.Vector(mainFrontWallRoofLength1+self.__towerWidth,0,0))
@@ -2587,7 +2590,7 @@ class AddamsFamilyHouse(BirchPanel):
                         mainFrontWallRoofOrigin2,
                         self.__mainFrontWallRoofLength2,
                         side='Front',
-                        braces=[65],
+                        braces=[0,65],
                         end='OuterMiter')
         rightWallRoofOrigin1 = mainFrontWallRoofOrigin2.add(
                 Base.Vector(self.__mainFrontWallRoofLength2-80,-1.17,0))
@@ -2630,6 +2633,14 @@ class AddamsFamilyHouse(BirchPanel):
                         braces=[rightWallProtrusionRoofLength/2],
                         side='Rear',
                         end='OuterMiter', start='InnerMiter')
+        rightWall2RoofLength = self.__rightWidth2+49.2
+        self.rightWall2Roof = RoofSection(name+"_RightWall2Roof",
+                                          rightWallProtrusionRoofOrigin,
+                                          rightWall2RoofLength,
+                                          braces=[rightWall2RoofLength/2],
+                                          side='Right',
+                                          start='InnerMiter')
+                                           
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2660,6 +2671,7 @@ class AddamsFamilyHouse(BirchPanel):
         self.rightWallProtrusionLORoof.show(doc)
         self.rightWallProtrusionRoof.show(doc)
         self.rightWallProtrusionRORoof.show(doc)
+        self.rightWall2Roof.show(doc)
 
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
