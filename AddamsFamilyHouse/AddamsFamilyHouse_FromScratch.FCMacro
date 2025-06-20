@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250619.2037>
+#  Last Modified : <250620.0900>
 #
 #  Description	
 #
@@ -2376,13 +2376,23 @@ class AddamsFamilyHouse(BirchPanel):
                                          side='Left')
         self.towerLeftOffset.CutZYfingers(endz=self.__towerHeight)
         self.towerLeftOffset.CutZYfingers(yoffset=self.__towerOffsetWidth,
-                                          endz=self.__towerHeight)
+                                          endz=self.__towerHeight-
+                                                self.__towerAdditionalPanelH,
+                                          startz=-BirchPanel.Thickness())
         self.towerLeftOffset.AddPanel(
             yoffset=self.__towerAdditionalPanelWidth+
                     self.__towerOffsetWidth,
             zoffset=self.__towerAdditionalPanelZ-towerOffsetOrigin.z,
-            width=self.__towerAdditionalPanelWidth,
+            width=self.__towerAdditionalPanelWidth-
+                    BirchPanel.Thickness(),
             height=self.__towerAdditionalPanelH)
+        self.towerLeftOffset.CutZYfingers(
+                    yoffset=(self.__towerAdditionalPanelWidth+
+                                self.__towerOffsetWidth-
+                                BirchPanel.Thickness()),
+                    startz=self.__towerAdditionalPanelZ-
+                            towerOffsetOrigin.z,
+                    endz=self.__towerHeight)
         self.mainWall.Cut(self.towerLeftOffset)
         self.mainWall.CutPanel(xoffset=(towerOffsetOrigin.x-mainWallOrigin.x)+
                                        BirchPanel.Thickness(),
@@ -2414,15 +2424,38 @@ class AddamsFamilyHouse(BirchPanel):
                                          side='Right')
         self.towerRightOffset.CutZYfingers(endz=self.__towerHeight)
         self.towerRightOffset.CutZYfingers(yoffset=self.__towerOffsetWidth,
-                                          endz=self.__towerHeight)
+                                          endz=self.__towerHeight-
+                                                self.__towerAdditionalPanelH,
+                                          startz=-BirchPanel.Thickness())
         self.tower.Cut(self.towerRightOffset)
         self.towerRightOffset.AddPanel(
             yoffset=self.__towerAdditionalPanelWidth+
                     self.__towerOffsetWidth,
             zoffset=self.__towerAdditionalPanelZ-towerOffsetOrigin.z,
-            width=self.__towerAdditionalPanelWidth,
+            width=self.__towerAdditionalPanelWidth-
+                    BirchPanel.Thickness(),
             height=self.__towerAdditionalPanelH)
+        self.towerRightOffset.CutZYfingers(
+                        yoffset=(self.__towerAdditionalPanelWidth+
+                                 self.__towerOffsetWidth-
+                                 BirchPanel.Thickness()),
+                        startz=self.__towerAdditionalPanelZ-
+                                towerOffsetOrigin.z,
+                        endz=self.__towerHeight)
         self.mainWall.Cut(self.towerRightOffset)
+        self.towerBack = WallPanel(
+                name + "_TowerBack",
+                towerFrontOrigin.add(
+                    Base.Vector(0,
+                                self.__towerOffsetWidth+
+                                    self.__towerAdditionalPanelWidth-
+                                    BirchPanel.Thickness(),
+                                self.__towerAdditionalPanelZ-
+                                    self.__towerAdditionalPanelH)),
+                self.__towerWidth,
+                self.__towerAdditionalPanelH)
+        self.towerBack.Cut(self.towerRightOffset)
+        self.towerBack.Cut(self.towerLeftOffset)
         bayOffsetOrigin = self.origin.add(
                     Base.Vector(self.__bayX,
                                 self.__bayY,
@@ -2562,9 +2595,12 @@ class AddamsFamilyHouse(BirchPanel):
                                         81.17,
                                         -1.17,0)),
                         self.__leftProtrudeRightRoofLength,
-                        braces=[self.__leftProtrudeRightRoofLength/2],
+                        braces=[self.__leftProtrudeRightRoofLength*.75],
                         side='Right',
                         start='OuterMiter',end='InnerMiter')
+        self.leftProtrudeRightRoof.overhang = \
+            self.leftProtrudeRightRoof.overhang.cut(
+                self.leftRoof.overhang)
         mainFrontWallRoofOrigin1 = mainWallOrigin.add(
                             Base.Vector(-self.__roofOverhangXOffset-
                                         BirchPanel.Thickness()*3+.55,
@@ -2583,6 +2619,9 @@ class AddamsFamilyHouse(BirchPanel):
                         braces=[100,200,mainFrontWallRoofLength1-
                                         BirchPanel.Thickness()],
                         start='InnerMiter')
+        self.mainFrontWallRoof1.overhang = \
+            self.mainFrontWallRoof1.overhang.cut(
+                self.leftRoof.overhang)
         mainFrontWallRoofOrigin2 = mainFrontWallRoofOrigin1.add(
                 Base.Vector(mainFrontWallRoofLength1+self.__towerWidth,0,0))
         self.mainFrontWallRoof2 = \
@@ -2652,6 +2691,7 @@ class AddamsFamilyHouse(BirchPanel):
         self.towerLeftOffset.show(doc)
         self.tower.show(doc)
         self.towerRightOffset.show(doc)
+        self.towerBack.show(doc)
         self.bayLeftOffset.show(doc)
         self.bay.show(doc)
         self.bayRightOffset.show(doc)
