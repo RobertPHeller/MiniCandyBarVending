@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250620.0943>
+#  Last Modified : <250623.0906>
 #
 #  Description	
 #
@@ -2679,7 +2679,52 @@ class AddamsFamilyHouse(BirchPanel):
                                           braces=[rightWall2RoofLength/2],
                                           side='Right',
                                           start='InnerMiter')
-                                           
+        towerLeftOffsetRoofOrigin = self.origin.add(
+            Base.Vector(291.97-80,#self.__towerX-self.__roofOverhangXOffset-1.015,
+                        self.__towerY-self.__roofOverhangYOffset-.53,
+                        self.__towerZ+self.__towerHeight))
+        print("*** towerLeftOffsetRoofOrigin = ",towerLeftOffsetRoofOrigin)
+        towerLeftOffsetRoofLength = \
+            self.__towerAdditionalPanelWidth+self.__towerOffsetWidth+ \
+            self.__roofOverhangYOffset*2 + 1
+        print("*** towerLeftOffsetRoofLength = ",towerLeftOffsetRoofLength)
+        self.towerLeftOffsetRoof = RoofSection(name+"_TowerLeftOffsetRoof",
+                                               towerLeftOffsetRoofOrigin,
+                                               towerLeftOffsetRoofLength,
+                                               side='Left',
+                                               braces=[towerLeftOffsetRoofLength*.5],
+                                               start='OuterMiter',
+                                               end='OuterMiter')
+        towerFrontRoofLength = self.__towerWidth+self.__roofOverhangYOffset*2+\
+                    2.09
+        self.towerFrontRoof = RoofSection(name+"_TowerFrontRoof",
+                                          towerLeftOffsetRoofOrigin.add(
+                                            Base.Vector(-1.1699999999999875,
+                                                        0,0)),
+                                          towerFrontRoofLength,
+                                          side='Front',
+                                          braces=[towerFrontRoofLength/2],
+                                          start='OuterMiter',
+                                          end='OuterMiter')
+        towerRightOffsetRoofOrigin = towerLeftOffsetRoofOrigin.add(
+            Base.Vector(79,-1.17,0))
+        print("*** towerRightOffsetRoofOrigin = ",towerRightOffsetRoofOrigin)
+        self.towerRightOffsetRoof = RoofSection(name+"_TowerRightOffsetRoof",
+                                                 towerRightOffsetRoofOrigin,
+                                                 towerLeftOffsetRoofLength+2.23,
+                                                 side='Right',
+                                                 braces=[towerLeftOffsetRoofLength*.55],
+                                                 start='OuterMiter',
+                                                 end='OuterMiter')
+        towerRearRoofOrigin = towerRightOffsetRoofOrigin.add(
+            Base.Vector(-80.16,towerLeftOffsetRoofLength-78.83,0))
+        self.towerRearRoof = RoofSection(name+"_TowerRearRoof",
+                                         towerRearRoofOrigin,
+                                         towerFrontRoofLength-1,
+                                         side='Rear',
+                                         braces=[towerFrontRoofLength/2],
+                                         start='OuterMiter',
+                                         end='OuterMiter')
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2712,7 +2757,11 @@ class AddamsFamilyHouse(BirchPanel):
         self.rightWallProtrusionRoof.show(doc)
         self.rightWallProtrusionRORoof.show(doc)
         self.rightWall2Roof.show(doc)
-
+        self.towerLeftOffsetRoof.show(doc)
+        self.towerFrontRoof.show(doc)
+        self.towerRightOffsetRoof.show(doc)
+        self.towerRearRoof.show(doc)
+        
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
