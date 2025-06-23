@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250623.1027>
+#  Last Modified : <250623.1430>
 #
 #  Description	
 #
@@ -2201,6 +2201,33 @@ class RoofSection(BirchPanel):
         except AttributeError as e:
             doc.removeObject(obj.Label)
 
+class FlatRoof(BirchPanel):
+    def __init__(self,name,face):
+        self.name = name
+        extrude = Base.Vector(0,0,BirchPanel.Thickness())
+        self.roofPanel = face.extrude(extrude)
+    @staticmethod
+    def PolygonRoof(name,origin,poly):
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        abspoly = list()
+        for x,y in poly:
+            abspoly.append(origin.add(Base.Vector(x,y,0)))
+        return FlatRoof(name,Part.Face(Part.Wire(Part.makePolygon(abspoly))))
+    @staticmethod
+    def RectangleRoof(name,origin,width,height):
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        return FlatRoof(name,Part.makePlane(width,height,origin,
+                                            Base.Vector(0,0,1)))
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.roofPanel
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.Color
+
 class AddamsFamilyHouse(BirchPanel):
     __leftWallOrigin = Base.Vector(0,0,0)
     __leftWidth = 162.43698120117188 - (-269.84454345703125)
@@ -2317,6 +2344,17 @@ class AddamsFamilyHouse(BirchPanel):
     __leftProtrudeFrontRoofLength = -173.72952270507812 - -322.970458984375
     __leftProtrudeRightRoofLength = 202.69088745117188-156.0223846435547+94.06
     __mainFrontWallRoofLength2 = 449.68-330.44 + RoofSection.OverhangOffset
+    __MainRoofLevel = 296.97
+    __MainRoofPolyXY = [ (18.39, 432.53), (18.39, 18.39), (49.51, 18.59),
+                         (49.51, 78.13), (252.37, 78.13), (252.37, 113.03),
+                         (330.52, 113.03), (330.52, 78.13), (418.93, 78.13),
+                         (418.93, 290.82), (477.43, 290.82), (477.43, 354.13),
+                         (418.93, 354.13), (418.93, 432.93), (18.39, 432.53) ]
+    __TowerRoofX = 270.36
+    __TowerRoofY = 17.86
+    __TowerRoofLevel = 404.225
+    __TowerRoofW = 42.04
+    __TowerRoofH = 77.19
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -2725,6 +2763,18 @@ class AddamsFamilyHouse(BirchPanel):
                                          braces=[towerFrontRoofLength/2],
                                          start='OuterMiter',
                                          end='OuterMiter')
+        self.mainRoofPanel = FlatRoof.PolygonRoof(name+"_MainRoofPanel",
+                                         origin.add(
+                                            Base.Vector(0,0,
+                                                        self.__MainRoofLevel)),
+                                         self.__MainRoofPolyXY)
+        self.towerRoofPanel = FlatRoof.RectangleRoof(name+"_TowerRoofPanel",
+                                            origin.add(
+                                                Base.Vector(self.__TowerRoofX,
+                                                            self.__TowerRoofY,
+                                                            self.__TowerRoofLevel)),
+                                                            self.__TowerRoofW,
+                                                            self.__TowerRoofH)
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2761,6 +2811,8 @@ class AddamsFamilyHouse(BirchPanel):
         self.towerFrontRoof.show(doc)
         self.towerRightOffsetRoof.show(doc)
         self.towerRearRoof.show(doc)
+        self.mainRoofPanel.show(doc)
+        self.towerRoofPanel.show(doc)
         
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
