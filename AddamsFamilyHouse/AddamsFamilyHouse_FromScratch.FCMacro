@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250623.0906>
+#  Last Modified : <250623.1027>
 #
 #  Description	
 #
@@ -2683,11 +2683,11 @@ class AddamsFamilyHouse(BirchPanel):
             Base.Vector(291.97-80,#self.__towerX-self.__roofOverhangXOffset-1.015,
                         self.__towerY-self.__roofOverhangYOffset-.53,
                         self.__towerZ+self.__towerHeight))
-        print("*** towerLeftOffsetRoofOrigin = ",towerLeftOffsetRoofOrigin)
+        #print("*** towerLeftOffsetRoofOrigin = ",towerLeftOffsetRoofOrigin)
         towerLeftOffsetRoofLength = \
             self.__towerAdditionalPanelWidth+self.__towerOffsetWidth+ \
             self.__roofOverhangYOffset*2 + 1
-        print("*** towerLeftOffsetRoofLength = ",towerLeftOffsetRoofLength)
+        #print("*** towerLeftOffsetRoofLength = ",towerLeftOffsetRoofLength)
         self.towerLeftOffsetRoof = RoofSection(name+"_TowerLeftOffsetRoof",
                                                towerLeftOffsetRoofOrigin,
                                                towerLeftOffsetRoofLength,
@@ -2708,7 +2708,7 @@ class AddamsFamilyHouse(BirchPanel):
                                           end='OuterMiter')
         towerRightOffsetRoofOrigin = towerLeftOffsetRoofOrigin.add(
             Base.Vector(79,-1.17,0))
-        print("*** towerRightOffsetRoofOrigin = ",towerRightOffsetRoofOrigin)
+        #print("*** towerRightOffsetRoofOrigin = ",towerRightOffsetRoofOrigin)
         self.towerRightOffsetRoof = RoofSection(name+"_TowerRightOffsetRoof",
                                                  towerRightOffsetRoofOrigin,
                                                  towerLeftOffsetRoofLength+2.23,
