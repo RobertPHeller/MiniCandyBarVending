@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250623.1430>
+#  Last Modified : <250624.1338>
 #
 #  Description	
 #
@@ -50,6 +50,7 @@ import math
 import os
 import sys
 sys.path.append(os.path.dirname(__file__))
+
 import time
 from PySide.QtCore import QCoreApplication, QEventLoop, QTimer
 def execute(loop, ms):
@@ -1293,6 +1294,12 @@ class GreenHouse(object):
     __upperBarWidth = 0.988888657334412 / 2
     __upperBarAngle = 90/4
     __color      = (.8, .8, .8)
+    # Vector (156.03402709960938, 106.17420959472656, 89.00996398925781)
+    # Vector (153.77389526367188, 103.75820922851562, 92.99351501464844)
+    # Vector (153.8173828125, 106.4601058959961, 88.98295593261719)
+    # Vector (274.7114562988281, 106.4601058959961, -28.89644432067871)
+    __roofSTL = os.path.dirname(__file__)+"/GreenhouseRoof.stl"    
+    __roofOrigin = Base.Vector(0,-(126.03-118.34)/2,124.84)
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -1301,6 +1308,7 @@ class GreenHouse(object):
         self.front=self.__wall('Front')
         self.right=self.__wall('Right')
         self.rear =self.__wall('Rear')
+        self.roof = self.__roof()
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -1315,6 +1323,10 @@ class GreenHouse(object):
         obj = doc.addObject("Part::Feature",self.name+"_Rear")
         obj.Shape = self.rear
         obj.Label=self.name+"_Rear"
+        obj.ViewObject.ShapeColor=self.__color
+        obj = doc.addObject("Mesh::Feature",self.name+"_Roof")
+        obj.Mesh = self.roof
+        obj.Label=self.name+"_Roof"
         obj.ViewObject.ShapeColor=self.__color
         try:
             obj = doc.addObject("Part::Feature",self.name+"_Miter")
@@ -1707,7 +1719,14 @@ class GreenHouse(object):
             else:
                 raise RuntimeError("unsuported side!")
         return(wall)
-
+    def __roof(self):
+        roof = Mesh.read(self.__roofSTL)
+        #Vector (153.82313537597656, 105.96363830566406, 91.41316986083984)
+        roof.translate(-153.82313537597656, -105.96363830566406, -91.41316986083984)
+        roof.rotate(math.pi/2,0,0)
+        ro = self.origin.add(self.__roofOrigin)
+        roof.translate(ro.x,ro.y,ro.z)
+        return(roof)
 class RoofSection(BirchPanel):
     # Overhang points:
     # Vector (-291.2991943359375, 191.2957000732422, 162.26939392089844)
