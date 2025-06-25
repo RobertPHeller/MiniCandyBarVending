@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250624.1338>
+#  Last Modified : <250625.0922>
 #
 #  Description	
 #
@@ -1298,7 +1298,7 @@ class GreenHouse(object):
     # Vector (153.77389526367188, 103.75820922851562, 92.99351501464844)
     # Vector (153.8173828125, 106.4601058959961, 88.98295593261719)
     # Vector (274.7114562988281, 106.4601058959961, -28.89644432067871)
-    __roofSTL = os.path.dirname(__file__)+"/GreenhouseRoof.stl"    
+    __roofSTL = os.path.join(os.path.dirname(__file__),"GreenhouseRoof.stl")
     __roofOrigin = Base.Vector(0,-(126.03-118.34)/2,124.84)
     def __init__(self,name,origin):
         self.name = name
@@ -2374,6 +2374,14 @@ class AddamsFamilyHouse(BirchPanel):
     __TowerRoofLevel = 404.225
     __TowerRoofW = 42.04
     __TowerRoofH = 77.19
+    __BayRoofSTL = os.path.join(os.path.dirname(__file__),"BayRoof.stl")
+    # Vector (-54.478546142578125, -76.32823181152344, -115.55367279052734)
+    __BayRoofTranslateOrig = Base.Vector (-54.478546142578125, 
+                                          -76.32823181152344, 
+                                          -115.55367279052734)
+    __BayRoofOrigin = Base.Vector(349.94-((434.75-427.97)/2),
+                                  47.19,99.43)
+    __BayRoofColor = (0.8, 0.8, 0.8)
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -2794,6 +2802,14 @@ class AddamsFamilyHouse(BirchPanel):
                                                             self.__TowerRoofLevel)),
                                                             self.__TowerRoofW,
                                                             self.__TowerRoofH)
+        bayroof = Mesh.read(self.__BayRoofSTL)
+        bayroof.translate(self.__BayRoofTranslateOrig.x,
+                          self.__BayRoofTranslateOrig.y,
+                          self.__BayRoofTranslateOrig.z)
+        bayroof.rotate(math.pi/2,0,0)
+        ro = self.origin.add(self.__BayRoofOrigin)
+        bayroof.translate(ro.x,ro.y,ro.z) 
+        self.bayroof = bayroof
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2832,7 +2848,10 @@ class AddamsFamilyHouse(BirchPanel):
         self.towerRearRoof.show(doc)
         self.mainRoofPanel.show(doc)
         self.towerRoofPanel.show(doc)
-        
+        obj = doc.addObject("Mesh::Feature",self.name+"_BayRoof")
+        obj.Mesh = self.bayroof
+        obj.Label=self.name+"_BayRoof"
+        obj.ViewObject.ShapeColor=self.__BayRoofColor
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
