@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250625.0922>
+#  Last Modified : <250628.0049>
 #
 #  Description	
 #
@@ -293,8 +293,45 @@ class LargeArchWindow(BirchPanel):
         obj.Label=self.name+"_LEDMount"
         obj.ViewObject.ShapeColor=self.__LEDMountColor
 
-class WallPanel(BirchPanel):
+class InstanceIter(metaclass=ABCMeta):
+    @classmethod
+    def __iter__(cls):
+        #print('*** InstanceIter.__iter__(',cls,')')
+        try:
+            panels = cls.__Panels
+        except AttributeError:
+            cls.__Panels = set()
+        return cls.__Panels.__iter__()
+    def __del__(self):
+        #print('*** InstanceIter.__del__(',self,')')
+        #print('*** InstanceIter.__del__(): self.__class__ is ',self.__class__)
+        try:
+            panels = self.__class__.__Panels
+        except AttributeError:
+            self.__class__.__Panels = set()
+        self.__class__.__Panels.remove(self)
+    def __init__(self):
+        #print('*** InstanceIter.__init__(',self,')')
+        #print('*** InstanceIter.__init__(): self.__class__ is ',self.__class__)
+        try:
+            panels = self.__class__.__Panels
+        except AttributeError:
+            self.__class__.__Panels = set()
+        self.__class__.__Panels.add(self)
+        #print('*** InstanceIter.__init__(): self.__class__.__Panels is',self.__class__.__Panels)
+        
+
+class WallPanel(BirchPanel,InstanceIter):
+    def __str__(self):
+        try:
+            result = '<WallPanel name="'+self.name+'"'
+            result = result+', origin='+str(self.origin)
+            result = result+', side="'+self.side+'">'
+            return result
+        except BaseException:
+            return "<WallPanel>"        
     def __init__(self,name,origin,width,height,*,windows=[],side='Front'):
+        super(WallPanel,self).__init__()
         self.name = name
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
@@ -431,8 +468,17 @@ class WallPanel(BirchPanel):
         for w in self.windows:
             w.show(doc)
 
-class Floor(BirchPanel):
+class Floor(BirchPanel, InstanceIter):
+    def __str__(self):
+        try:
+            result = '<Floor name="'+self.name+'"'
+            result = result+', origin='+str(self.origin)
+            result = result+'>'
+            return result
+        except BaseException:
+            return "<Floor>"
     def __init__(self,name,origin,width,height):
+        super(Floor,self).__init__()
         self.name = name
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
@@ -1727,7 +1773,8 @@ class GreenHouse(object):
         ro = self.origin.add(self.__roofOrigin)
         roof.translate(ro.x,ro.y,ro.z)
         return(roof)
-class RoofSection(BirchPanel):
+
+class RoofSection(BirchPanel, InstanceIter):
     # Overhang points:
     # Vector (-291.2991943359375, 191.2957000732422, 162.26939392089844)
     # Vector (-287.65008544921875, 191.39491271972656, 159.75738525390625)
@@ -1791,8 +1838,17 @@ class RoofSection(BirchPanel):
     # Vector (-275.3706970214844, 301.8320617675781, 128.3293914794922)
     __fenceSetback = 5.3229370117187
     __fenceHelght = 301.8320617675781-278.30072021484375
+    def __str__(self):
+        try:
+            result = '<RoofSection name="'+self.name+'"'
+            result = result+', origin='+str(self.origin)
+            result = result+', side="'+self.side+'">'
+            return result
+        except BaseException:
+            return "<RoofSection>"
     def __init__(self,name,origin,length,*,braces=[],side='Front',
                  start='Square',end='Square'):
+        super(RoofSection,self).__init__()
         self.name = name
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
@@ -2220,8 +2276,16 @@ class RoofSection(BirchPanel):
         except AttributeError as e:
             doc.removeObject(obj.Label)
 
-class FlatRoof(BirchPanel):
+class FlatRoof(BirchPanel, InstanceIter):
+    def __str__(self):
+        try:
+            result = '<FlatRoof name="'+self.name+'"'
+            result = result+'>'
+            return result
+        except BaseException:
+            return "<FlatRoof>"
     def __init__(self,name,face):
+        super(FlatRoof,self).__init__()
         self.name = name
         extrude = Base.Vector(0,0,BirchPanel.Thickness())
         self.roofPanel = face.extrude(extrude)
@@ -2858,6 +2922,34 @@ if __name__ == '__main__':
     doc = App.newDocument("AddamsFamilyHouse")
     AddamsFamilyHouse = AddamsFamilyHouse("AddamsFamilyHouse",Base.Vector(0,0,0))
     AddamsFamilyHouse.show(doc)
+    _iter = WallPanel.__iter__()
+    while True:
+        try:
+            wall = _iter.__next__()
+        except StopIteration:
+            break
+        print("*** wall is ",wall)
+    _iter = Floor.__iter__()
+    while True:
+        try:
+            floor = _iter.__next__()
+        except StopIteration:
+            break
+        print("*** floor is ",floor)
+    _iter = RoofSection.__iter__()
+    while True:
+        try:
+            roof = _iter.__next__()
+        except StopIteration:
+            break
+        print("*** roof is ",roof)
+    _iter = FlatRoof.__iter__()
+    while True:
+        try:
+            roof = _iter.__next__()
+        except StopIteration:
+            break
+        print("*** roof is ",roof)
     Gui.activeDocument().activeView().viewTop()
     Gui.SendMsgToActiveView("ViewFit")
     #LargeArchWindow.Trim3DPrint()
