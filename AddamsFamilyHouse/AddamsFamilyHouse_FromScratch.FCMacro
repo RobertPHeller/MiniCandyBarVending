@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250628.0049>
+#  Last Modified : <250628.1612>
 #
 #  Description	
 #
@@ -81,6 +81,11 @@ class BirchPanel(metaclass=ABCMeta):
     @property
     def Color(self):
         return (.8,.8,.8)
+    @abstractmethod
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        pass
 
 class LargeArchWindow(BirchPanel):
     # -263.86346435546875,  .8360995054244995  -- -241.0014190673828 , 0.8360995054244995
@@ -95,6 +100,10 @@ class LargeArchWindow(BirchPanel):
     __TrimWidth = 1.5
     __trimColor=(139/255, 35/255, 35/255)
     __LEDMountColor=(0.0, 0.0, 0.0)
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        return (False, -1, -1, deltaY)
     @classmethod
     def Trim3DPrint(cls,*,doc=None,filename='LargeArchWindowTrim.stl'):
         archOrig = Base.Vector(cls.__archMinorRadius,
@@ -467,6 +476,60 @@ class WallPanel(BirchPanel,InstanceIter):
         obj.ViewObject.ShapeColor=self.Color
         for w in self.windows:
             w.show(doc)
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        #print("*** WallPanel.PanelPage(): page is ",page)
+        #print("*** WallPanel.PanelPage(): lastX = ",lastX,", lastY = ",lastY)
+        currentX = lastX
+        currentY = lastY
+        bbox = self.wall.BoundBox
+        #print("*** WallPanel.PanelPage(): bbox = ",bbox)
+        rotation = 0
+        if self.side == 'Front':
+            direction = Base.Vector(0,1,0)
+            lengthX = bbox.XLength
+            lengthY = bbox.ZLength
+        elif self.side == 'Left':
+            direction = Base.Vector(-1,0,0)
+            lengthX = bbox.YLength
+            lengthY = bbox.ZLength
+        elif self.side == 'Right':
+            direction = Base.Vector(1,0,0)
+            lengthX = bbox.YLength
+            lengthY = bbox.ZLength
+        elif self.side == 'Rear':
+            direction = Base.Vector(0,-1,0)
+            lengthX = bbox.XLength
+            lengthY = bbox.ZLength
+        if currentX+lengthX > maxX:
+            currentX = minX
+            currentY += deltaY
+        if currentY+lengthY > maxY:
+            if currentX+lengthX > maxX or currentY+lengthY > maxY:
+                return (True, -1, -1, deltaY)
+            currentX = minX
+            temp = lengthX
+            lengthX = lengthY
+            currentY += deltaY
+            lengthY = temp
+            rotation = 90
+        #print("*** WallPanel.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
+        #print("*** WallPanel.PanelPage(): lengthX = ",lengthX,", lengthY = ", lengthY)
+        #print("*** WallPanel.PanelPage(): rotation = ",rotation)
+        obj = techDoc.addObject("Part::Feature",self.name)
+        obj.Shape = self.wall
+        obj.ViewObject.Visibility = False
+        panel = techDoc.addObject('TechDraw::DrawViewPart',self.name+"_View")
+        page.addView(panel)
+        panel.Source = obj
+        panel.X = currentX+lengthX/2
+        panel.Y = currentY+lengthY/2
+        panel.Rotation = rotation
+        panel.Direction = direction
+        if lengthY+10 > deltaY:
+            deltaY = lengthY+10
+        return (True,currentX+lengthX+10,currentY,deltaY)
 
 class Floor(BirchPanel, InstanceIter):
     def __str__(self):
@@ -495,6 +558,45 @@ class Floor(BirchPanel, InstanceIter):
         obj.Shape = self.floor
         obj.Label=self.name
         obj.ViewObject.ShapeColor=self.Color
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        #print("*** Floor.PanelPage(): page is ",page)
+        #print("*** Floor.PanelPage(): lastX = ",lastX,", lastY = ",lastY)
+        currentX = lastX
+        currentY = lastY
+        bbox = self.floor.BoundBox
+        #print("*** Floor.PanelPage(): bbox = ",bbox)
+        lengthX = bbox.XLength
+        lengthY = bbox.YLength
+        rotation = 0
+        if currentX+bbox.XLength > maxX:
+            currentX = minX
+            currentY += deltaY
+        if currentY+bbox.YLength > maxY:
+            if currentX+bbox.YLength > maxX or currentY+bbox.XLength > maxY:
+                return (True, -1, -1, deltaY)
+            currentX = minX
+            lengthX = bbox.YLength
+            currentY += deltaY
+            lengthY = bbox.XLength
+            rotation = 90
+        #print("*** Floor.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
+        #print("*** Floor.PanelPage(): lengthX = ",lengthX,", lengthY = ", lengthY)
+        #print("*** Floor.PanelPage(): rotation = ",rotation)
+        obj = techDoc.addObject("Part::Feature",self.name)
+        obj.Shape = self.floor
+        obj.ViewObject.Visibility = False
+        panel = techDoc.addObject('TechDraw::DrawViewPart',self.name+"_View")
+        page.addView(panel)
+        panel.Source = obj
+        panel.X = currentX+lengthX/2
+        panel.Y = currentY+lengthY/2
+        panel.Rotation = rotation
+        panel.Direction = (0,0,1)
+        if lengthY+10 > deltaY:
+            deltaY = lengthY+10
+        return (True,currentX+lengthX+10,currentY,deltaY)
 
 
 
@@ -1543,10 +1645,11 @@ class GreenHouse(object):
                         
                         wall = wall.fuse(bar)
                     except Part.OCCError as e:
-                        print("*** GreenHouse.__wall(): bangle is ",bangle)
-                        print("*** GreenHouse.__wall(): p is ",p)
-                        print("*** GreenHouse.__wall(): barPoly is ",barPoly)
-                        print("*** GreenHouse.__wall(): Failed to create face from wire")
+                        #print("*** GreenHouse.__wall(): bangle is ",bangle)
+                        #print("*** GreenHouse.__wall(): p is ",p)
+                        #print("*** GreenHouse.__wall(): barPoly is ",barPoly)
+                        #print("*** GreenHouse.__wall(): Failed to create face from wire")
+                        pass
                 #self.miter = upperWindowArcIndent
                 wall = wall.cut(wIndent)
             elif side=='Right':
@@ -1652,10 +1755,11 @@ class GreenHouse(object):
                         
                         wall = wall.fuse(bar)
                     except Part.OCCError as e:
-                        print("*** GreenHouse.__wall(): bangle is ",bangle)
-                        print("*** GreenHouse.__wall(): p is ",p)
-                        print("*** GreenHouse.__wall(): barPoly is ",barPoly)
-                        print("*** GreenHouse.__wall(): Failed to create face from wire")
+                        #print("*** GreenHouse.__wall(): bangle is ",bangle)
+                        #print("*** GreenHouse.__wall(): p is ",p)
+                        #print("*** GreenHouse.__wall(): barPoly is ",barPoly)
+                        #print("*** GreenHouse.__wall(): Failed to create face from wire")
+                        pass
                 #self.miter = bar
                 wall = wall.cut(wIndent)
             elif side=='Rear':
@@ -1756,10 +1860,11 @@ class GreenHouse(object):
                         
                         wall = wall.fuse(bar)
                     except Part.OCCError as e:
-                        print("*** GreenHouse.__wall(): bangle is ",bangle)
-                        print("*** GreenHouse.__wall(): p is ",p)
-                        print("*** GreenHouse.__wall(): barPoly is ",barPoly)
-                        print("*** GreenHouse.__wall(): Failed to create face from wire")
+                        #print("*** GreenHouse.__wall(): bangle is ",bangle)
+                        #print("*** GreenHouse.__wall(): p is ",p)
+                        #print("*** GreenHouse.__wall(): barPoly is ",barPoly)
+                        #print("*** GreenHouse.__wall(): Failed to create face from wire")
+                        pass
                 #self.miter = bar
                 wall = wall.cut(wIndent)
             else:
@@ -2275,6 +2380,10 @@ class RoofSection(BirchPanel, InstanceIter):
             obj.ViewObject.ShapeColor=(1.0, 0.0, 0.0)
         except AttributeError as e:
             doc.removeObject(obj.Label)
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        return (False, -1, -1, deltaY)
 
 class FlatRoof(BirchPanel, InstanceIter):
     def __str__(self):
@@ -2310,8 +2419,51 @@ class FlatRoof(BirchPanel, InstanceIter):
         obj.Shape = self.roofPanel
         obj.Label=self.name
         obj.ViewObject.ShapeColor=self.Color
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        #print("*** FlatRoof.PanelPage(): page is ",page)
+        #print("*** FlatRoof.PanelPage(): lastX = ",lastX,", lastY = ",lastY)
+        currentX = lastX
+        currentY = lastY
+        bbox = self.roofPanel.BoundBox
+        #print("*** FlatRoof.PanelPage(): bbox = ",bbox)
+        lengthX = bbox.XLength
+        lengthY = bbox.YLength
+        rotation = 0
+        if currentX+bbox.XLength > maxX:
+            currentX = minX
+            currentY += deltaY
+        if currentY+bbox.YLength > maxY:
+            if currentX+bbox.YLength > maxX or currentY+bbox.XLength > maxY:
+                return (True, -1, -1, deltaY)
+            currentX = minX
+            lengthX = bbox.YLength
+            currentY += deltaY
+            lengthY = bbox.XLength
+            rotation = 90
+        #print("*** FlatRoof.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
+        #print("*** FlatRoof.PanelPage(): lengthX = ",lengthX,", lengthY = ", lengthY)
+        #print("*** FlatRoof.PanelPage(): rotation = ",rotation)
+        obj = techDoc.addObject("Part::Feature",self.name)
+        obj.Shape = self.roofPanel
+        obj.ViewObject.Visibility = False
+        panel = techDoc.addObject('TechDraw::DrawViewPart',self.name+"_View")
+        page.addView(panel)
+        panel.Source = obj
+        panel.X = currentX+lengthX/2
+        panel.Y = currentY+lengthY/2
+        panel.Rotation = rotation
+        panel.Direction = (0,0,1)
+        if lengthY+10 > deltaY:
+            deltaY = lengthY+10
+        return (True,currentX+lengthX+10,currentY,deltaY)
 
 class AddamsFamilyHouse(BirchPanel):
+    def PanelPage(self,techDoc,page,lastX,lastY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        return (False, -1, -1)
     __leftWallOrigin = Base.Vector(0,0,0)
     __leftWidth = 162.43698120117188 - (-269.84454345703125)
     __leftWallWindows = [
@@ -2428,11 +2580,14 @@ class AddamsFamilyHouse(BirchPanel):
     __leftProtrudeRightRoofLength = 202.69088745117188-156.0223846435547+94.06
     __mainFrontWallRoofLength2 = 449.68-330.44 + RoofSection.OverhangOffset
     __MainRoofLevel = 296.97
-    __MainRoofPolyXY = [ (18.39, 432.53), (18.39, 18.39), (49.51, 18.59),
-                         (49.51, 78.13), (252.37, 78.13), (252.37, 113.03),
+    __MainRoofPolyXY1 = [ (18.39, 432.53), (18.39, 18.39), (49.51, 18.59),
+                         (49.51, 78.13), (252.37, 78.13), (252.37, 432.93),
+                         (18.39, 432.53)]
+    __MainRoofPolyXY2 = [ (252.37, 113.03),
                          (330.52, 113.03), (330.52, 78.13), (418.93, 78.13),
                          (418.93, 290.82), (477.43, 290.82), (477.43, 354.13),
-                         (418.93, 354.13), (418.93, 432.93), (18.39, 432.53) ]
+                         (418.93, 354.13), (418.93, 432.93), (252.37, 432.53),
+                         (252.37, 113.03) ]
     __TowerRoofX = 270.36
     __TowerRoofY = 17.86
     __TowerRoofLevel = 404.225
@@ -2854,11 +3009,16 @@ class AddamsFamilyHouse(BirchPanel):
                                          braces=[towerFrontRoofLength/2],
                                          start='OuterMiter',
                                          end='OuterMiter')
-        self.mainRoofPanel = FlatRoof.PolygonRoof(name+"_MainRoofPanel",
+        self.mainRoofPanel1 = FlatRoof.PolygonRoof(name+"_MainRoofPanel1",
                                          origin.add(
                                             Base.Vector(0,0,
                                                         self.__MainRoofLevel)),
-                                         self.__MainRoofPolyXY)
+                                         self.__MainRoofPolyXY1)
+        self.mainRoofPanel2 = FlatRoof.PolygonRoof(name+"_MainRoofPanel2",
+                                         origin.add(
+                                            Base.Vector(0,0,
+                                                        self.__MainRoofLevel)),
+                                         self.__MainRoofPolyXY2)
         self.towerRoofPanel = FlatRoof.RectangleRoof(name+"_TowerRoofPanel",
                                             origin.add(
                                                 Base.Vector(self.__TowerRoofX,
@@ -2910,47 +3070,149 @@ class AddamsFamilyHouse(BirchPanel):
         self.towerFrontRoof.show(doc)
         self.towerRightOffsetRoof.show(doc)
         self.towerRearRoof.show(doc)
-        self.mainRoofPanel.show(doc)
+        self.mainRoofPanel1.show(doc)
+        self.mainRoofPanel2.show(doc)
         self.towerRoofPanel.show(doc)
         obj = doc.addObject("Mesh::Feature",self.name+"_BayRoof")
         obj.Mesh = self.bayroof
         obj.Label=self.name+"_BayRoof"
         obj.ViewObject.ShapeColor=self.__BayRoofColor
+
+Pages = list()
+def NewPage(techdoc,pagenum=0):
+    pagenum += 1
+    page = techdoc.addObject('TechDraw::DrawPage','SmallCutPanelPage_%03d'%(pagenum))
+    page.Template = techdoc.SmallCutPanelTemplate
+    page.ViewObject.show()
+    Pages.append((page, pagenum))
+    return (page, pagenum)
+    
+
 if __name__ == '__main__':
     if "AddamsFamilyHouse" in App.listDocuments().keys():
         App.closeDocument("AddamsFamilyHouse")
     doc = App.newDocument("AddamsFamilyHouse")
     AddamsFamilyHouse = AddamsFamilyHouse("AddamsFamilyHouse",Base.Vector(0,0,0))
     AddamsFamilyHouse.show(doc)
+    Gui.activeDocument().activeView().viewTop()
+    Gui.SendMsgToActiveView("ViewFit")
+    #LargeArchWindow.Trim3DPrint()
+    #LargeArchWindow.LEDMount3DPrint()
+    if "AddamsFamilyHouse BirchPanels" in App.listDocuments().keys():
+        App.closeDocument("AddamsFamilyHouse BirchPanels")
+    techdoc = App.newDocument("AddamsFamilyHouse BirchPanels")
+    techdoc.addObject('TechDraw::DrawSVGTemplate','SmallCutPanelTemplate')
+    techdoc.SmallCutPanelTemplate.Template = os.path.join(
+                        os.path.dirname(__file__),"smallcutpanel.svg")
+    page, pagenum = NewPage(techdoc)
+    pages = list()
+    lastX = 50
+    lastY = 50
+    deltaY = 0
     _iter = WallPanel.__iter__()
     while True:
         try:
             wall = _iter.__next__()
         except StopIteration:
             break
-        print("*** wall is ",wall)
+        for i in range(2):
+            #print("*** WallPanel loop: ",i,": wall is ",wall)
+            #print("*** WallPanel loop: pagenum is ",pagenum)
+            hasPanel, newX, newY, deltaY = wall.PanelPage(techdoc,
+                                                          page,
+                                                          lastX,lastY,deltaY)
+            #print("*** WallPanel loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
+            if not hasPanel:
+                break
+            if newX < 0 and newY < 0:
+                # need new page
+                page, pagenum = NewPage(techdoc,pagenum)
+                lastX = 50
+                lastY = 50
+                deltaY = 0
+            else:
+                lastX = newX
+                lastY = newY
+                break
     _iter = Floor.__iter__()
     while True:
         try:
             floor = _iter.__next__()
         except StopIteration:
             break
-        print("*** floor is ",floor)
+        for i in range(2):
+            #print("*** Floor loop: ",i,": floor is ",floor)
+            #print("*** Floor loop: pagenum is ",pagenum)
+            hasPanel, newX, newY, deltaY = floor.PanelPage(techdoc,
+                                                      page,
+                                                      lastX,lastY,deltaY)
+            #print("*** Floor loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
+            if not hasPanel:
+                break
+            if newX < 0 and newY < 0:
+                # need new page
+                page, pagenum = NewPage(techdoc,pagenum)
+                lastX = 50
+                lastY = 50
+                deltaY = 0
+            else:
+                lastX = newX
+                lastY = newY
+                break
     _iter = RoofSection.__iter__()
     while True:
         try:
             roof = _iter.__next__()
         except StopIteration:
             break
-        print("*** roof is ",roof)
+        for i in range(2):
+            #print("*** RoofSection loop: ",i,": roof is ",roof)
+            #print("*** RoofSection loop: pagenum is ",pagenum)
+            hasPanel, newX, newY, deltaY = roof.PanelPage(techdoc,
+                                                          page,
+                                                          lastX,lastY,deltaY)
+            #print("*** RoofSection loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
+            if not hasPanel:
+                break
+            if newX < 0 and newY < 0:
+                # need new page
+                page, pagenum = NewPage(techdoc,pagenum)
+                lastX = 50
+                lastY = 50
+                deltaY = 0
+            else:
+                lastX = newX
+                lastY = newY
+                break
     _iter = FlatRoof.__iter__()
     while True:
         try:
             roof = _iter.__next__()
         except StopIteration:
             break
-        print("*** roof is ",roof)
-    Gui.activeDocument().activeView().viewTop()
-    Gui.SendMsgToActiveView("ViewFit")
-    #LargeArchWindow.Trim3DPrint()
-    #LargeArchWindow.LEDMount3DPrint()
+        for i in range(2):
+            #print("*** FlatRoof loop: ",i,": roof is ",roof)
+            #print("*** FlatRoof loop: pagenum is ",pagenum)
+            hasPanel, newX, newY, deltaY = roof.PanelPage(techdoc,
+                                                          page,
+                                                          lastX,lastY,deltaY)
+            #print("*** FlatRoof loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
+            if not hasPanel:
+                break
+            if newX < 0 and newY < 0:
+                # need new page
+                page, pagenum = NewPage(techdoc,pagenum)
+                lastX = 50
+                lastY = 50
+                deltaY = 0
+            else:
+                lastX = newX
+                lastY = newY
+                break
+    techdoc.recompute()
+    sleep(500)
+    for page,number in Pages:
+        TechDrawGui.exportPageAsSvg(page,
+                     os.path.join(os.path.dirname(__file__),
+                                  "AddamsFamilyHouse_Panel%03d.svg"%(number)))
+        
