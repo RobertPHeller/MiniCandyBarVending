@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250628.1612>
+#  Last Modified : <250628.2013>
 #
 #  Description	
 #
@@ -2588,6 +2588,10 @@ class AddamsFamilyHouse(BirchPanel):
                          (418.93, 290.82), (477.43, 290.82), (477.43, 354.13),
                          (418.93, 354.13), (418.93, 432.93), (252.37, 432.53),
                          (252.37, 113.03) ]
+    __TowerLowerOverhangPolyXY = [ (252.43, 19.54), (252.43, 0.0), (330.43, 0),
+                                   (330.43, 19.54), (358.32, 19.54), 
+                                   (358.32, -27.89), (224.54, -27.89),
+                                   (224.54, 19.54), (252.43, 19.54) ]
     __TowerRoofX = 270.36
     __TowerRoofY = 17.86
     __TowerRoofLevel = 404.225
@@ -3019,6 +3023,11 @@ class AddamsFamilyHouse(BirchPanel):
                                             Base.Vector(0,0,
                                                         self.__MainRoofLevel)),
                                          self.__MainRoofPolyXY2)
+        self.towerOverHang = FlatRoof.PolygonRoof(name+"_TowerOverHang",
+                                                  origin.add(
+                                                    Base.Vector(0,0,
+                                                                self.__rootOverhangZOffset)),
+                                          self.__TowerLowerOverhangPolyXY)
         self.towerRoofPanel = FlatRoof.RectangleRoof(name+"_TowerRoofPanel",
                                             origin.add(
                                                 Base.Vector(self.__TowerRoofX,
@@ -3072,6 +3081,7 @@ class AddamsFamilyHouse(BirchPanel):
         self.towerRearRoof.show(doc)
         self.mainRoofPanel1.show(doc)
         self.mainRoofPanel2.show(doc)
+        self.towerOverHang.show(doc)
         self.towerRoofPanel.show(doc)
         obj = doc.addObject("Mesh::Feature",self.name+"_BayRoof")
         obj.Mesh = self.bayroof
