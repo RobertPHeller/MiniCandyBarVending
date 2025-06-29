@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250628.2013>
+#  Last Modified : <250629.1256>
 #
 #  Description	
 #
@@ -72,6 +72,24 @@ def sleep(ms):
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 class BirchPanel(metaclass=ABCMeta):
+    @staticmethod
+    def FitPanel(lastX,lastY,lengthX,lengthY,deltaY,minX,minY,maxX,maxY):
+        currentX = lastX
+        currentY = lastY
+        rotation = 0 
+        if currentX+lengthX > maxX:
+            currentX = minX
+            currentY += deltaY
+        if currentY+lengthY > maxY:
+            if currentX+lengthY > maxX or currentY+lengthX > maxY:
+                return (False, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+            currentX = minX
+            temp = lengthX
+            lengthX = lengthY
+            currentY += deltaY
+            lengthY = temp
+            rotation = 90
+        return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
     @staticmethod
     def Thickness():
         return .125 * 25.4
@@ -481,11 +499,8 @@ class WallPanel(BirchPanel,InstanceIter):
                                              maxY=(16*25.4)-50):
         #print("*** WallPanel.PanelPage(): page is ",page)
         #print("*** WallPanel.PanelPage(): lastX = ",lastX,", lastY = ",lastY)
-        currentX = lastX
-        currentY = lastY
         bbox = self.wall.BoundBox
         #print("*** WallPanel.PanelPage(): bbox = ",bbox)
-        rotation = 0
         if self.side == 'Front':
             direction = Base.Vector(0,1,0)
             lengthX = bbox.XLength
@@ -502,18 +517,11 @@ class WallPanel(BirchPanel,InstanceIter):
             direction = Base.Vector(0,-1,0)
             lengthX = bbox.XLength
             lengthY = bbox.ZLength
-        if currentX+lengthX > maxX:
-            currentX = minX
-            currentY += deltaY
-        if currentY+lengthY > maxY:
-            if currentX+lengthX > maxX or currentY+lengthY > maxY:
-                return (True, -1, -1, deltaY)
-            currentX = minX
-            temp = lengthX
-            lengthX = lengthY
-            currentY += deltaY
-            lengthY = temp
-            rotation = 90
+        fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation = \
+            BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,minX,minY,
+                                maxX,maxY)
+        if not fitP:
+            return (True, -1, -1, deltaY)
         #print("*** WallPanel.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
         #print("*** WallPanel.PanelPage(): lengthX = ",lengthX,", lengthY = ", lengthY)
         #print("*** WallPanel.PanelPage(): rotation = ",rotation)
@@ -563,24 +571,15 @@ class Floor(BirchPanel, InstanceIter):
                                              maxY=(16*25.4)-50):
         #print("*** Floor.PanelPage(): page is ",page)
         #print("*** Floor.PanelPage(): lastX = ",lastX,", lastY = ",lastY)
-        currentX = lastX
-        currentY = lastY
         bbox = self.floor.BoundBox
         #print("*** Floor.PanelPage(): bbox = ",bbox)
         lengthX = bbox.XLength
         lengthY = bbox.YLength
-        rotation = 0
-        if currentX+bbox.XLength > maxX:
-            currentX = minX
-            currentY += deltaY
-        if currentY+bbox.YLength > maxY:
-            if currentX+bbox.YLength > maxX or currentY+bbox.XLength > maxY:
-                return (True, -1, -1, deltaY)
-            currentX = minX
-            lengthX = bbox.YLength
-            currentY += deltaY
-            lengthY = bbox.XLength
-            rotation = 90
+        fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation = \
+            BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,minX,minY,
+                                maxX,maxY)
+        if not fitP:
+            return (True, -1, -1, deltaY)
         #print("*** Floor.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
         #print("*** Floor.PanelPage(): lengthX = ",lengthX,", lengthY = ", lengthY)
         #print("*** Floor.PanelPage(): rotation = ",rotation)
@@ -1906,7 +1905,7 @@ class RoofSection(BirchPanel, InstanceIter):
     def __roofSlopeFrontExtrude(self):
         return self.__roofSlopeFrontNormal*BirchPanel.Thickness()
     @property
-    def __roofSlopeFrontWidth(self):
+    def __roofSlopeWidth(self):
         return math.hypot(self.__slopeDXY,self.__slopeDZ)
     @property
     def __roofSlopeRearNormal(self):
@@ -1916,9 +1915,6 @@ class RoofSection(BirchPanel, InstanceIter):
     def __roofSlopeRearExtrude(self):
         return self.__roofSlopeRearNormal*BirchPanel.Thickness()
     @property
-    def __roofSlopeRearWidth(self):
-        return math.hypot(self.__slopeDZ,self.__slopeDXY)
-    @property
     def __roofSlopeRightNormal(self):
         theta = math.atan2(self.__slopeDXY,self.__slopeDZ)
         return Base.Vector(math.cos(theta),0,math.sin(theta))
@@ -1926,18 +1922,12 @@ class RoofSection(BirchPanel, InstanceIter):
     def __roofSlopeRightExtrude(self):
         return self.__roofSlopeRightNormal*BirchPanel.Thickness()
     @property
-    def __roofSlopeRightWidth(self):
-        return math.hypot(self.__slopeDZ,self.__slopeDXY)
-    @property
     def __roofSlopeLeftNormal(self):
         theta = math.atan2(self.__slopeDXY,self.__slopeDZ)
         return Base.Vector(math.cos(theta),0,-math.sin(theta))
     @property
     def __roofSlopeLeftExtrude(self):
         return self.__roofSlopeLeftNormal*BirchPanel.Thickness()
-    @property
-    def __roofSlopeLeftWidth(self):
-        return math.hypot(self.__slopeDZ,self.__slopeDXY)
     # Roof fence points:
     # Vector (-275.3706970214844, 278.30072021484375, 128.3632049560547)
     # Vector (-275.3706970214844, 301.8320617675781, 128.3293914794922)
@@ -1964,7 +1954,7 @@ class RoofSection(BirchPanel, InstanceIter):
         if side == 'Front':
             roofnorm = self.__roofSlopeFrontNormal
             roofH = length
-            roofW = self.__roofSlopeFrontWidth
+            roofW = self.__roofSlopeWidth
             slopeextrude = self.__roofSlopeFrontExtrude
             overhangH = length
             overhangW = self.__overhangWidth
@@ -2053,7 +2043,7 @@ class RoofSection(BirchPanel, InstanceIter):
                 raise RuntimeError("Unsupported Miter")
         elif side == 'Left':
             roofnorm = self.__roofSlopeLeftNormal
-            roofW = self.__roofSlopeLeftWidth
+            roofW = self.__roofSlopeWidth
             roofH = length
             slopeextrude = self.__roofSlopeLeftExtrude
             overhangH = self.__overhangWidth
@@ -2147,7 +2137,7 @@ class RoofSection(BirchPanel, InstanceIter):
                 raise RuntimeError("Unsupported Miter")
         elif side == 'Right':
             roofnorm = self.__roofSlopeRightNormal
-            roofW = self.__roofSlopeRightWidth
+            roofW = self.__roofSlopeWidth
             roofH = length
             slopeextrude = self.__roofSlopeRightExtrude
             overhangH = self.__overhangWidth
@@ -2244,7 +2234,7 @@ class RoofSection(BirchPanel, InstanceIter):
         elif side == 'Rear':
             roofnorm = self.__roofSlopeRearNormal
             roofH = length
-            roofW = self.__roofSlopeRearWidth
+            roofW = self.__roofSlopeWidth
             slopeextrude = self.__roofSlopeRearExtrude
             overhangH = length
             overhangW = self.__overhangWidth
@@ -2342,7 +2332,10 @@ class RoofSection(BirchPanel, InstanceIter):
                                         roofH,
                                         roofOrigin,
                                         roofnorm).extrude(slopeextrude)
+        self.roofnorm = roofnorm
+        self.roofLength = length
         self.braces = list()
+        self.bracenorm = bracenorm
         if len(braces) > 0:
             for b in braceOrigins:
                 brace = Part.makePlane(braceW,
@@ -2356,7 +2349,8 @@ class RoofSection(BirchPanel, InstanceIter):
         if miterCutEnd != None:
             self.overhang = self.overhang.cut(miterCutEnd)
             self.roofpanel = self.roofpanel.cut(miterCutEnd)
-        
+        self.panelPage = 0
+        self.techDoc = None
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2383,7 +2377,90 @@ class RoofSection(BirchPanel, InstanceIter):
     def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
                                              maxX=(24*25.4)-50,
                                              maxY=(16*25.4)-50):
-        return (False, -1, -1, deltaY)
+        if techDoc != self.techDoc:
+            self.panelPage = 0;
+            self.techDoc = techDoc
+        while self.panelPage < (len(self.braces) + 2):
+            if self.panelPage == 0:
+                bbox = self.overhang.BoundBox
+                lengthX = bbox.XLength
+                lengthY = bbox.YLength
+                fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
+                    BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+                                        minX,minY,maxX,maxY)
+                if not fitP:
+                    return (True, -1, -1, deltaY)
+                obj = techDoc.addObject("Part::Feature",self.name+"_Overhang")
+                obj.Shape = self.overhang
+                obj.ViewObject.Visibility = False
+                panel = techDoc.addObject('TechDraw::DrawViewPart',self.name+"_Overhang_View")
+                page.addView(panel)
+                panel.Source = obj 
+                panel.X = currentX+lengthX/2
+                panel.Y = currentY+lengthY/2
+                panel.Rotation = rotation
+                panel.Direction = (0,0,1)
+                if lengthY+10 > deltaY:
+                    deltaY = lengthY+10
+                lastX = currentX+lengthX+10
+                lastY = currentY
+                self.panelPage += 1
+            elif self.panelPage == 1:
+                # roof panel
+                if self.roofnorm.y == 0:
+                    lengthX = self.__roofSlopeWidth
+                    lengthY = self.roofLength
+                else:
+                    lengthX = self.roofLength
+                    lengthY = self.__roofSlopeWidth
+                fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
+                    BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+                                        minX,minY, maxX,maxY)
+                if not fitP:
+                    return (True, -1, -1, deltaY)
+                obj = techDoc.addObject("Part::Feature",self.name+"_Roof")
+                obj.Shape = self.roofpanel
+                obj.ViewObject.Visibility = False
+                panel = techDoc.addObject('TechDraw::DrawViewPart',self.name+"_Roof_View")
+                page.addView(panel)
+                panel.Source = obj
+                panel.X = currentX+lengthX/2
+                panel.Y = currentY+lengthY/2
+                panel.Rotation = rotation
+                panel.Direction = self.roofnorm 
+                if lengthY+10 > deltaY:
+                    deltaY = lengthY+10
+                lastX = currentX+lengthX+10
+                lastY = currentY
+                self.panelPage += 1
+            else:
+                # braces
+                ibrace = self.panelPage - 2
+                brace = self.braces[ibrace]
+                bbox = brace.BoundBox
+                lengthX = bbox.ZLength
+                lengthY = max(bbox.XLength,bbox.YLength)
+                fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
+                    BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+                                        minX,minY, maxX,maxY)
+                if not fitP:
+                    return (True, -1, -1, deltaY)
+                obj = techDoc.addObject("Part::Feature",self.name+"_Brace%03d"%(ibrace))
+                obj.Shape = brace
+                obj.ViewObject.Visibility = False
+                panel = techDoc.addObject('TechDraw::DrawViewPart',self.name+"_Brace%03d_View"%(ibrace))
+                page.addView(panel)
+                panel.Source = obj
+                panel.X = currentX+lengthX/2
+                panel.Y = currentY+lengthY/2
+                panel.Rotation = rotation
+                panel.Direction = self.bracenorm
+                if lengthY+10 > deltaY:
+                    deltaY = lengthY+10
+                lastX = currentX+lengthX+10
+                lastY = currentY
+                self.panelPage += 1
+        return (True, lastX, lastY, deltaY)
 
 class FlatRoof(BirchPanel, InstanceIter):
     def __str__(self):
@@ -2424,24 +2501,15 @@ class FlatRoof(BirchPanel, InstanceIter):
                                              maxY=(16*25.4)-50):
         #print("*** FlatRoof.PanelPage(): page is ",page)
         #print("*** FlatRoof.PanelPage(): lastX = ",lastX,", lastY = ",lastY)
-        currentX = lastX
-        currentY = lastY
         bbox = self.roofPanel.BoundBox
         #print("*** FlatRoof.PanelPage(): bbox = ",bbox)
         lengthX = bbox.XLength
         lengthY = bbox.YLength
-        rotation = 0
-        if currentX+bbox.XLength > maxX:
-            currentX = minX
-            currentY += deltaY
-        if currentY+bbox.YLength > maxY:
-            if currentX+bbox.YLength > maxX or currentY+bbox.XLength > maxY:
-                return (True, -1, -1, deltaY)
-            currentX = minX
-            lengthX = bbox.YLength
-            currentY += deltaY
-            lengthY = bbox.XLength
-            rotation = 90
+        fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
+            BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+                                        minX,minY, maxX,maxY)
+        if not fitP:
+            return (True, -1, -1, deltaY)
         #print("*** FlatRoof.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
         #print("*** FlatRoof.PanelPage(): lengthX = ",lengthX,", lengthY = ", lengthY)
         #print("*** FlatRoof.PanelPage(): rotation = ",rotation)
@@ -3108,9 +3176,9 @@ if __name__ == '__main__':
     Gui.SendMsgToActiveView("ViewFit")
     #LargeArchWindow.Trim3DPrint()
     #LargeArchWindow.LEDMount3DPrint()
-    if "AddamsFamilyHouse BirchPanels" in App.listDocuments().keys():
-        App.closeDocument("AddamsFamilyHouse BirchPanels")
-    techdoc = App.newDocument("AddamsFamilyHouse BirchPanels")
+    if "AddamsFamilyHouse_BirchPanels" in App.listDocuments().keys():
+        App.closeDocument("AddamsFamilyHouse_BirchPanels")
+    techdoc = App.newDocument("AddamsFamilyHouse_BirchPanels")
     techdoc.addObject('TechDraw::DrawSVGTemplate','SmallCutPanelTemplate')
     techdoc.SmallCutPanelTemplate.Template = os.path.join(
                         os.path.dirname(__file__),"smallcutpanel.svg")
