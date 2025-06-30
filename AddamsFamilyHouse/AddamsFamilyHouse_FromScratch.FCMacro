@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250629.1256>
+#  Last Modified : <250629.2113>
 #
 #  Description	
 #
@@ -73,7 +73,8 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 
 class BirchPanel(metaclass=ABCMeta):
     @staticmethod
-    def FitPanel(lastX,lastY,lengthX,lengthY,deltaY,minX,minY,maxX,maxY):
+    def FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,minX,minY,maxX,maxY):
+        views = page.getAllViews()
         currentX = lastX
         currentY = lastY
         rotation = 0 
@@ -518,8 +519,8 @@ class WallPanel(BirchPanel,InstanceIter):
             lengthX = bbox.XLength
             lengthY = bbox.ZLength
         fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation = \
-            BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,minX,minY,
-                                maxX,maxY)
+            BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,minX,
+                                minY, maxX,maxY)
         if not fitP:
             return (True, -1, -1, deltaY)
         #print("*** WallPanel.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
@@ -576,7 +577,7 @@ class Floor(BirchPanel, InstanceIter):
         lengthX = bbox.XLength
         lengthY = bbox.YLength
         fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation = \
-            BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,minX,minY,
+            BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,minX,minY,
                                 maxX,maxY)
         if not fitP:
             return (True, -1, -1, deltaY)
@@ -2386,7 +2387,7 @@ class RoofSection(BirchPanel, InstanceIter):
                 lengthX = bbox.XLength
                 lengthY = bbox.YLength
                 fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
-                    BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+                    BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,
                                         minX,minY,maxX,maxY)
                 if not fitP:
                     return (True, -1, -1, deltaY)
@@ -2408,13 +2409,13 @@ class RoofSection(BirchPanel, InstanceIter):
             elif self.panelPage == 1:
                 # roof panel
                 if self.roofnorm.y == 0:
-                    lengthX = self.__roofSlopeWidth
-                    lengthY = self.roofLength
+                    lengthY = self.__roofSlopeWidth
+                    lengthX = self.roofLength
                 else:
                     lengthX = self.roofLength
                     lengthY = self.__roofSlopeWidth
                 fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
-                    BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+                    BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,
                                         minX,minY, maxX,maxY)
                 if not fitP:
                     return (True, -1, -1, deltaY)
@@ -2438,10 +2439,10 @@ class RoofSection(BirchPanel, InstanceIter):
                 ibrace = self.panelPage - 2
                 brace = self.braces[ibrace]
                 bbox = brace.BoundBox
-                lengthX = bbox.ZLength
-                lengthY = max(bbox.XLength,bbox.YLength)
+                lengthY = bbox.ZLength
+                lengthX = max(bbox.XLength,bbox.YLength)
                 fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
-                    BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+                    BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,
                                         minX,minY, maxX,maxY)
                 if not fitP:
                     return (True, -1, -1, deltaY)
@@ -2506,7 +2507,7 @@ class FlatRoof(BirchPanel, InstanceIter):
         lengthX = bbox.XLength
         lengthY = bbox.YLength
         fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation =\
-            BirchPanel.FitPanel(lastX,lastY,lengthX,lengthY,deltaY,
+            BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,
                                         minX,minY, maxX,maxY)
         if not fitP:
             return (True, -1, -1, deltaY)
