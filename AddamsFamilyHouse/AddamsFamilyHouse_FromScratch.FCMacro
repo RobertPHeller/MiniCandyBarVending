@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250630.1218>
+#  Last Modified : <250630.1703>
 #
 #  Description	
 #
@@ -86,13 +86,14 @@ class BirchPanel(metaclass=ABCMeta):
             rotation = 90
         if currentX+lengthX < maxX and \
            currentY+lengthY < maxY:
+            deltaY = max(deltaY,lengthY+10)
             return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
         elif currentX+lengthX > maxX and \
            currentY+lengthY+deltaY < maxY and \
            minX+lengthX < maxX:
             currentX = minX
             currentY += deltaY
-            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+            return (True, currentX, currentY, lengthX, lengthY+10, currentY+10, rotation)
         elif currentY+lengthY > maxY and \
              currentY+lengthX < maxY and \
              currentX+lengthY < maxX:
@@ -103,6 +104,7 @@ class BirchPanel(metaclass=ABCMeta):
                 rotation = 90
             else:
                 rotation = 0
+            deltaY = max(deltaY,lengthY+10)
             return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
         elif currentY+deltaY+lengthX < maxY and \
              minX+lengthY < maxX:
@@ -115,7 +117,7 @@ class BirchPanel(metaclass=ABCMeta):
                 rotation = 0
             currentX = minX
             currentY += deltaY
-            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+            return (True, currentX, currentY, lengthX, lengthY+10, currentY+10, rotation)
         else:
             return (False, lastX, lastY, lengthX, lengthY, deltaY, rotation)
     @staticmethod
@@ -581,8 +583,6 @@ class WallPanel(BirchPanel,InstanceIter):
         panel.Y = currentY+lengthY/2
         panel.Rotation = rotation
         panel.Direction = direction
-        if lengthY+10 > deltaY:
-            deltaY = lengthY+10
         return (True,currentX+lengthX+10,currentY,deltaY)
 
 class Floor(BirchPanel, InstanceIter):
@@ -644,8 +644,6 @@ class Floor(BirchPanel, InstanceIter):
         panel.Y = currentY+lengthY/2
         panel.Rotation = rotation
         panel.Direction = (0,0,1)
-        if lengthY+10 > deltaY:
-            deltaY = lengthY+10
         return (True,currentX+lengthX+10,currentY,deltaY)
 
 
@@ -2453,8 +2451,6 @@ class RoofSection(BirchPanel, InstanceIter):
                 panel.Y = currentY+lengthY/2
                 panel.Rotation = rotation
                 panel.Direction = (0,0,1)
-                if lengthY+10 > deltaY:
-                    deltaY = lengthY+10
                 lastX = currentX+lengthX+10
                 lastY = currentY
                 self.panelPage += 1
@@ -2481,8 +2477,6 @@ class RoofSection(BirchPanel, InstanceIter):
                 panel.Y = currentY+lengthY/2
                 panel.Rotation = rotation
                 panel.Direction = self.roofnorm 
-                if lengthY+10 > deltaY:
-                    deltaY = lengthY+10
                 lastX = currentX+lengthX+10
                 lastY = currentY
                 self.panelPage += 1
@@ -2508,8 +2502,6 @@ class RoofSection(BirchPanel, InstanceIter):
                 panel.Y = currentY+lengthY/2
                 panel.Rotation = rotation
                 panel.Direction = self.bracenorm
-                if lengthY+10 > deltaY:
-                    deltaY = lengthY+10
                 lastX = currentX+lengthX+10
                 lastY = currentY
                 self.panelPage += 1
@@ -2581,8 +2573,6 @@ class FlatRoof(BirchPanel, InstanceIter):
         panel.Y = currentY+lengthY/2
         panel.Rotation = rotation
         panel.Direction = (0,0,1)
-        if lengthY+10 > deltaY:
-            deltaY = lengthY+10
         return (True,currentX+lengthX+10,currentY,deltaY)
 
 class AddamsFamilyHouse(BirchPanel):
@@ -3245,14 +3235,14 @@ if __name__ == '__main__':
     lastX = 50
     lastY = 50
     deltaY = 0
-    for wall in WallPanel.SortedList():
+    for roof in RoofSection.SortedList():
         for i in range(2):
-            #print("*** WallPanel loop: ",i,": wall is ",wall)
-            #print("*** WallPanel loop: pagenum is ",pagenum)
-            hasPanel, newX, newY, deltaY = wall.PanelPage(techdoc,
+            #print("*** RoofSection loop: ",i,": roof is ",roof)
+            #print("*** RoofSection loop: pagenum is ",pagenum)
+            hasPanel, newX, newY, deltaY = roof.PanelPage(techdoc,
                                                           page,
                                                           lastX,lastY,deltaY)
-            #print("*** WallPanel loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
+            #print("*** RoofSection loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
             if not hasPanel:
                 break
             if newX < 0 and newY < 0:
@@ -3285,14 +3275,14 @@ if __name__ == '__main__':
                 lastX = newX
                 lastY = newY
                 break
-    for roof in RoofSection.SortedList():
+    for wall in WallPanel.SortedList():
         for i in range(2):
-            #print("*** RoofSection loop: ",i,": roof is ",roof)
-            #print("*** RoofSection loop: pagenum is ",pagenum)
-            hasPanel, newX, newY, deltaY = roof.PanelPage(techdoc,
+            #print("*** WallPanel loop: ",i,": wall is ",wall)
+            #print("*** WallPanel loop: pagenum is ",pagenum)
+            hasPanel, newX, newY, deltaY = wall.PanelPage(techdoc,
                                                           page,
                                                           lastX,lastY,deltaY)
-            #print("*** RoofSection loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
+            #print("*** WallPanel loop: hasPanel, newX, newY, deltaY",hasPanel, newX, newY, deltaY)
             if not hasPanel:
                 break
             if newX < 0 and newY < 0:
