@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250629.2113>
+#  Last Modified : <250629.2206>
 #
 #  Description	
 #
@@ -323,7 +323,7 @@ class LargeArchWindow(BirchPanel):
 
 class InstanceIter(metaclass=ABCMeta):
     @classmethod
-    def __iter__(cls):
+    def SetIter(cls):
         #print('*** InstanceIter.__iter__(',cls,')')
         try:
             panels = cls.__Panels
@@ -347,9 +347,27 @@ class InstanceIter(metaclass=ABCMeta):
             self.__class__.__Panels = set()
         self.__class__.__Panels.add(self)
         #print('*** InstanceIter.__init__(): self.__class__.__Panels is',self.__class__.__Panels)
-        
+    @classmethod
+    def SortedList(cls):
+        return cls.SortSet(cls.__Panels)
+    @abstractmethod
+    def sortKey(self):
+        pass
+    @staticmethod
+    def __sortkey(item):
+        return item.sortKey()
+    @classmethod 
+    def SortSet(cls,panelSet):
+        panelList =  list(panelSet)
+        panelList.sort(key=cls.__sortkey)
+        return panelList
 
 class WallPanel(BirchPanel,InstanceIter):
+    def sortKey(self):
+        bbox = self.wall.BoundBox
+        a = bbox.ZLength
+        b = max(bbox.XLength,bbox.YLength)
+        return math.hypot(a,b)
     def __str__(self):
         try:
             result = '<WallPanel name="'+self.name+'"'
@@ -541,6 +559,11 @@ class WallPanel(BirchPanel,InstanceIter):
         return (True,currentX+lengthX+10,currentY,deltaY)
 
 class Floor(BirchPanel, InstanceIter):
+    def sortKey(self):
+        bbox = self.floor.BoundBox
+        a = bbox.XLength
+        b = bbox.YLength
+        return math.hypot(a,b)
     def __str__(self):
         try:
             result = '<Floor name="'+self.name+'"'
@@ -2352,6 +2375,8 @@ class RoofSection(BirchPanel, InstanceIter):
             self.roofpanel = self.roofpanel.cut(miterCutEnd)
         self.panelPage = 0
         self.techDoc = None
+    def sortKey(self):
+        return self.roofLength
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -2464,6 +2489,11 @@ class RoofSection(BirchPanel, InstanceIter):
         return (True, lastX, lastY, deltaY)
 
 class FlatRoof(BirchPanel, InstanceIter):
+    def sortKey(self):
+        bbox = self.roofPanel.BoundBox
+        a = bbox.XLength
+        b = bbox.YLength
+        return math.hypot(a,b)
     def __str__(self):
         try:
             result = '<FlatRoof name="'+self.name+'"'
@@ -3188,12 +3218,7 @@ if __name__ == '__main__':
     lastX = 50
     lastY = 50
     deltaY = 0
-    _iter = WallPanel.__iter__()
-    while True:
-        try:
-            wall = _iter.__next__()
-        except StopIteration:
-            break
+    for wall in WallPanel.SortedList():
         for i in range(2):
             #print("*** WallPanel loop: ",i,": wall is ",wall)
             #print("*** WallPanel loop: pagenum is ",pagenum)
@@ -3213,12 +3238,7 @@ if __name__ == '__main__':
                 lastX = newX
                 lastY = newY
                 break
-    _iter = Floor.__iter__()
-    while True:
-        try:
-            floor = _iter.__next__()
-        except StopIteration:
-            break
+    for floor in Floor.SortedList():
         for i in range(2):
             #print("*** Floor loop: ",i,": floor is ",floor)
             #print("*** Floor loop: pagenum is ",pagenum)
@@ -3238,12 +3258,7 @@ if __name__ == '__main__':
                 lastX = newX
                 lastY = newY
                 break
-    _iter = RoofSection.__iter__()
-    while True:
-        try:
-            roof = _iter.__next__()
-        except StopIteration:
-            break
+    for roof in RoofSection.SortedList():
         for i in range(2):
             #print("*** RoofSection loop: ",i,": roof is ",roof)
             #print("*** RoofSection loop: pagenum is ",pagenum)
@@ -3263,12 +3278,7 @@ if __name__ == '__main__':
                 lastX = newX
                 lastY = newY
                 break
-    _iter = FlatRoof.__iter__()
-    while True:
-        try:
-            roof = _iter.__next__()
-        except StopIteration:
-            break
+    for roof in FlatRoof.SortedList():
         for i in range(2):
             #print("*** FlatRoof loop: ",i,": roof is ",roof)
             #print("*** FlatRoof loop: pagenum is ",pagenum)
