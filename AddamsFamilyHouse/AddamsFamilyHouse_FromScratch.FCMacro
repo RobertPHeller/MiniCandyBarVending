@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Thu Jun 5 14:31:17 2025
-#  Last Modified : <250629.2206>
+#  Last Modified : <250630.1218>
 #
 #  Description	
 #
@@ -77,20 +77,47 @@ class BirchPanel(metaclass=ABCMeta):
         views = page.getAllViews()
         currentX = lastX
         currentY = lastY
-        rotation = 0 
-        if currentX+lengthX > maxX:
-            currentX = minX
-            currentY += deltaY
-        if currentY+lengthY > maxY:
-            if currentX+lengthY > maxX or currentY+lengthX > maxY:
-                return (False, currentX, currentY, lengthX, lengthY, deltaY, rotation)
-            currentX = minX
+        rotation = 0
+        if (lengthY > 2*deltaY and lengthX < deltaY) or \
+            lengthY > lengthX*2:
             temp = lengthX
             lengthX = lengthY
-            currentY += deltaY
             lengthY = temp
             rotation = 90
-        return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+        if currentX+lengthX < maxX and \
+           currentY+lengthY < maxY:
+            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+        elif currentX+lengthX > maxX and \
+           currentY+lengthY+deltaY < maxY and \
+           minX+lengthX < maxX:
+            currentX = minX
+            currentY += deltaY
+            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+        elif currentY+lengthY > maxY and \
+             currentY+lengthX < maxY and \
+             currentX+lengthY < maxX:
+            temp = lengthX
+            lengthX = lengthY
+            lengthY = temp
+            if rotation == 0:
+                rotation = 90
+            else:
+                rotation = 0
+            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+        elif currentY+deltaY+lengthX < maxY and \
+             minX+lengthY < maxX:
+            temp = lengthX
+            lengthX = lengthY
+            lengthY = temp
+            if rotation == 0:
+                rotation = 90
+            else:
+                rotation = 0
+            currentX = minX
+            currentY += deltaY
+            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+        else:
+            return (False, lastX, lastY, lengthX, lengthY, deltaY, rotation)
     @staticmethod
     def Thickness():
         return .125 * 25.4
