@@ -1,0 +1,224 @@
+#*****************************************************************************
+#
+#  System        : 
+#  Module        : 
+#  Object Name   : $RCSfile$
+#  Revision      : $Revision$
+#  Date          : $Date$
+#  Author        : $Author$
+#  Created By    : Robert Heller
+#  Created       : Sun Jul 6 15:01:26 2025
+#  Last Modified : <250706.1617>
+#
+#  Description	
+#
+#  Notes
+#
+#  History
+#	
+#*****************************************************************************
+#
+#    Copyright (C) 2025  Robert Heller D/B/A Deepwoods Software
+#			51 Locke Hill Road
+#			Wendell, MA 01379-9728
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# 
+#
+#*****************************************************************************
+
+
+import FreeCAD as App
+import Part, TechDraw, Mesh, MeshPart, TechDrawGui
+from FreeCAD import Base
+
+import math
+
+import os
+import sys
+sys.path.append(os.path.dirname(__file__))
+
+import DFRobotGearMotor
+
+import time
+from PySide.QtCore import QCoreApplication, QEventLoop, QTimer
+def execute(loop, ms):
+    timer = QTimer()
+    timer.setSingleShot(True)
+    
+    timer.timeout.connect(loop.quit)
+    timer.start(ms)
+    loop.exec_()
+
+def sleep(ms):
+    if not QCoreApplication.instance():
+        app = QCoreApplication([])
+        execute(app, ms)
+    else:
+        loop = QEventLoop()
+        execute(loop, ms)
+
+from abc import ABCMeta, abstractmethod, abstractproperty
+
+class BirchPanel(metaclass=ABCMeta):
+    @staticmethod
+    def FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,minX,minY,maxX,maxY):
+        views = page.getAllViews()
+        currentX = lastX
+        currentY = lastY
+        rotation = 0
+        if (lengthY > 2*deltaY and lengthX < deltaY) or \
+            lengthY > lengthX*2:
+            temp = lengthX
+            lengthX = lengthY
+            lengthY = temp
+            rotation = 90
+        if currentX+lengthX < maxX and \
+           currentY+lengthY < maxY:
+            deltaY = max(deltaY,lengthY+10)
+            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+        elif currentX+lengthX > maxX and \
+           currentY+lengthY+deltaY < maxY and \
+           minX+lengthX < maxX:
+            currentX = minX
+            currentY += deltaY
+            return (True, currentX, currentY, lengthX, lengthY+10, currentY+10, rotation)
+        elif currentY+lengthY > maxY and \
+             currentY+lengthX < maxY and \
+             currentX+lengthY < maxX:
+            temp = lengthX
+            lengthX = lengthY
+            lengthY = temp
+            if rotation == 0:
+                rotation = 90
+            else:
+                rotation = 0
+            deltaY = max(deltaY,lengthY+10)
+            return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
+        elif currentY+deltaY+lengthX < maxY and \
+             minX+lengthY < maxX:
+            temp = lengthX
+            lengthX = lengthY
+            lengthY = temp
+            if rotation == 0:
+                rotation = 90
+            else:
+                rotation = 0
+            currentX = minX
+            currentY += deltaY
+            return (True, currentX, currentY, lengthX, lengthY+10, currentY+10, rotation)
+        else:
+            return (False, lastX, lastY, lengthX, lengthY, deltaY, rotation)
+    @staticmethod
+    def Thickness():
+        return .125 * 25.4
+    @property
+    def FingerWidth(self):
+        return .5 * 25.4
+    @property
+    def Color(self):
+        return (.8,.8,.8)
+    @abstractmethod
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        pass
+        
+class Coupling(object):
+    __QuarterInch = .25*25.4
+    __Sixmm = 6
+    __Length = 24
+    __OuterDia = 18
+    __Color = (.8, .8, .8)
+    def __init__(self,name,origin):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        coupling = Part.makeCylinder(self.__OuterDia/2,self.__Length,
+                                     origin.add(Base.Vector(0,
+                                                            +self.__Length/2,
+                                                            0)),
+                                     Base.Vector(0,-1,0))
+        motorShaft = Part.makeCylinder(self.__Sixmm/2,self.__Length/2,
+                                       origin.add(Base.Vector(0,
+                                                              +self.__Length/2,
+                                                              0)),
+                                       Base.Vector(0,-1,0))
+        coupling = coupling.cut(motorShaft)
+        rod = Part.makeCylinder(self.__QuarterInch/2,self.__Length/2,
+                                origin,
+                                Base.Vector(0,-1,0))
+        self.coupling = coupling.cut(rod)
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.coupling
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.__Color
+
+class QuarterInchBy28ThreaderRod(object):
+    __QuarterInch = .25*25.4
+    __ThreadsPerInch = 28
+    __Inch = 25.4
+    __Color = (.8, .8, .8)
+    def __init__(self,name,origin,length=6*25.4):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        shaft = Part.makeCylinder(self.__QuarterInch/2,length,origin,
+                                  Base.Vector(0,-1,0))
+        self.rod = shaft
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.rod
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.__Color
+
+class CandyBarLurchPusher(object):
+    def __init__(self,name,origin):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        self.motor = DFRobotGearMotor.DFRobotGearMotor_UpsideDown(
+                    name+"_Motor",
+                    DFRobotGearMotor.DFRobotGearMotor_UpsideDown.OriginFromShaftHole(self.origin))
+        self.threadedRod = QuarterInchBy28ThreaderRod(
+                    name+"_ThreadedRod",
+                    origin.add(Base.Vector(0,-41.7,0)))
+        self.coupling = Coupling(name+"_Coupling",
+                                 origin.add(Base.Vector(0,-41.7,0)))
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        self.motor.show(doc)
+        self.threadedRod.show(doc)
+        self.coupling.show(doc)
+        
+
+if __name__ == '__main__':
+    if "Pusher" in App.listDocuments().keys():
+        App.closeDocument("Pusher")
+    doc = App.newDocument("Pusher")
+    pusher = CandyBarLurchPusher("Pusher",Base.Vector(0,0,0))
+    pusher.show(doc)
+    Gui.activeDocument().activeView().viewTop()
+    Gui.SendMsgToActiveView("ViewFit")
