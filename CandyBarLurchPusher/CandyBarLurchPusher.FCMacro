@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250706.1617>
+#  Last Modified : <250707.0931>
 #
 #  Description	
 #
@@ -136,7 +136,7 @@ class BirchPanel(metaclass=ABCMeta):
                                              maxX=(24*25.4)-50,
                                              maxY=(16*25.4)-50):
         pass
-        
+      
 class Coupling(object):
     __QuarterInch = .25*25.4
     __Sixmm = 6
@@ -171,20 +171,66 @@ class Coupling(object):
         obj.Label=self.name
         obj.ViewObject.ShapeColor=self.__Color
 
+
 class QuarterInchBy28ThreaderRod(object):
     __QuarterInch = .25*25.4
     __ThreadsPerInch = 28
     __Inch = 25.4
     __Color = (.8, .8, .8)
+    __Pitch =   0.907
+    __MajorDiameter = 6.35
+    __MinorDiameter = 5.271
+    __PitchDiameter = 5.761
+    __ThreadHeight =    0.49
+    __Addendum = 0.295
+    __Root = 0.114
+    __LeadAngle = 2.87# degrees
+    __Padding = (1/32)*25.4 
+    @classmethod
+    def makeProfile(cls):
+        profheight = cls.__ThreadHeight
+        minordiameter = cls.__MinorDiameter
+        padding = cls.__Padding
+        pitch = cls.__Pitch
+        v1 = Base.Vector(minordiameter/2 + profheight + padding, 0, padding/math.sqrt(3))        
+        v2 = Base.Vector(minordiameter/2, 0, -pitch*5/16)
+        v3 = Base.Vector(minordiameter/2, 0, -pitch*9/16)        
+        v4 = Base.Vector(minordiameter/2 + profheight + padding, 0, -pitch*7/8 - padding/math.sqrt(3))
+        l1 = Part.LineSegment(v1,v2)
+        l3 = Part.LineSegment(v3,v4)
+        l4 = Part.LineSegment(v4,v1)
+        l2 = Part.LineSegment(v2,v3) 
+        sprofile = Part.Shape([l1, l2, l3, l4])
+        return Part.Wire(sprofile.Edges)
     def __init__(self,name,origin,length=6*25.4):
         self.name = name
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
         self.origin = origin
-        shaft = Part.makeCylinder(self.__QuarterInch/2,length,origin,
-                                  Base.Vector(0,-1,0))
-        self.rod = shaft
-    def show(self,doc=None):
+        shaft = Part.makeCylinder(self.__QuarterInch/2,length,origin,Base.Vector(0,-1,0))
+        wprofile = QuarterInchBy28ThreaderRod.makeProfile()
+        helixpad = .01
+        wprofile.translate(Base.Vector(0,0,-helixpad))
+        helix = Part.makeLongHelix(self.__Pitch,length+self.__Pitch+helixpad*2,self.__MajorDiameter/2,0,False)
+        helix.translate(Base.Vector(0,0,-helixpad)) 
+        thread = Part.BRepOffsetAPI.MakePipeShell(helix)
+        thread.setFrenetMode(True)  # Sets a Frenet (true) or a CorrectedFrenet(false) trihedron to perform the sweeping.  False = corkscrew.
+        thread.setTransitionMode(1)  # 0=Transformed, *1=right corner transition, 2=Round corner
+        thread.add(wprofile, False)	# WithContact = connect to helix.  WithCorrection = orthogonal to helix tangent.
+        if not thread.isReady():
+            self.rod = shaft
+            raise RuntimeError("BRepOffsetAPI not ready error sweeping thread profile.\n")
+        thread.build()
+        if not thread.makeSolid():
+            self.rod = shaft
+            raise RuntimeError("BRepOffsetAPI faled building swept thread solid.\n")
+        sthread = thread.shape()
+        sthread = sthread.rotate(Base.Vector(0,0,0),Base.Vector(1,0,0),90)
+        sthread = sthread.translate(origin)
+        threadbody = shaft.cut(sthread)
+        self.rod = threadbody
+        
+    def show(self,doc=None):        
         if doc==None:
             doc = App.activeDocument()
         obj = doc.addObject("Part::Feature",self.name)
@@ -198,9 +244,9 @@ class CandyBarLurchPusher(object):
         if not isinstance(origin,Base.Vector):
             raise RuntimeError("origin is not a Vector!")
         self.origin = origin
-        self.motor = DFRobotGearMotor.DFRobotGearMotor_UpsideDown(
+        self.motor = DFRobotGearMotor.DFRobotGearMotor_Left(
                     name+"_Motor",
-                    DFRobotGearMotor.DFRobotGearMotor_UpsideDown.OriginFromShaftHole(self.origin))
+                    DFRobotGearMotor.DFRobotGearMotor_Left.OriginFromShaftHole(self.origin))
         self.threadedRod = QuarterInchBy28ThreaderRod(
                     name+"_ThreadedRod",
                     origin.add(Base.Vector(0,-41.7,0)))
