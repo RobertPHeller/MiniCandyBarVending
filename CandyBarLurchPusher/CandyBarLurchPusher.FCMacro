@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250708.0757>
+#  Last Modified : <250708.1556>
 #
 #  Description	
 #
@@ -396,6 +396,30 @@ class QuarterInchBy28ThreaderRod(object):
         obj.Label=self.name
         obj.ViewObject.ShapeColor=self.__Color
 
+class Bearing_6383K14(object):
+    __InsideDiameter = .25*25.4
+    __OutsideDiameter = .75*25.4
+    __Width = .25*25.4
+    __Filename=os.path.join(os.path.dirname(__file__),
+                            "6383K14_Ball Bearing.STEP")
+    __Color=(.5,.5,.5)
+    def __init__(self,name,origin,*,
+                 rotationAxis=Base.Vector(1,0,0),rotationAngle=90):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        bearing = Part.read(self.__Filename)
+        bearing = bearing.rotate(Base.Vector(0,0,0),rotationAxis,rotationAngle)
+        self.bearing = bearing.translate(self.origin)
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.bearing
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.__Color
+
 class CandyBarLurchPusher(object):
     __PusherHeight = 2*25.4
     __PusherWidth  = 2.5*25.4
@@ -411,7 +435,7 @@ class CandyBarLurchPusher(object):
         self.threadedRod = QuarterInchBy28ThreaderRod(
                     name+"_ThreadedRod",
                     origin.add(Base.Vector(0,-41.7,0)),
-                    self.__PusherLength+25.4)
+                    self.__PusherLength)
         self.coupling = Coupling(name+"_Coupling",
                                  origin.add(Base.Vector(0,-41.7,0)))
         endPanelOrigin = origin.add(Base.Vector(-self.__PusherWidth/2,
@@ -461,6 +485,25 @@ class CandyBarLurchPusher(object):
                                 side='side')
         self.right.CutOtherPanel(self.endpanel)
         self.right.CutOtherPanel(self.bottom)
+        self.pillowBlock = Panel(name+"_PillowBlock",
+                                 endPanelOrigin.add(
+                                    Base.Vector(BirchPanel.Thickness()*2,
+                                                -(self.__PusherLength+13.32),
+                                                0)),
+                                 self.__PusherWidth-(BirchPanel.Thickness()*4),
+                                 self.__PusherHeight,
+                                 side='end')
+        self.pillowBlock.CutXZfingers(endx=self.__PusherWidth-
+                                           (BirchPanel.Thickness()*4),
+                                      yoffset=-BirchPanel.Thickness())
+        self.bottom.CutOtherPanel(self.pillowBlock)
+        self.bearing = Bearing_6383K14(self.name+"_Bearing",
+                                       origin.add(
+                                        Base.Vector(0,
+                                                    -(self.__PusherLength+
+                                                      38.53),
+                                                    0)))
+        self.pillowBlock.CutOtherShape(self.bearing.bearing)
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -471,6 +514,8 @@ class CandyBarLurchPusher(object):
         self.bottom.show(doc)
         self.left.show(doc)
         self.right.show(doc)
+        self.pillowBlock.show(doc)
+        self.bearing.show(doc)
         
 
 if __name__ == '__main__':
@@ -479,5 +524,5 @@ if __name__ == '__main__':
     doc = App.newDocument("Pusher")
     pusher = CandyBarLurchPusher("Pusher",Base.Vector(0,0,0))
     pusher.show(doc)
-    Gui.activeDocument().activeView().viewFront()
+    Gui.activeDocument().activeView().viewTop()
     Gui.SendMsgToActiveView("ViewFit")
