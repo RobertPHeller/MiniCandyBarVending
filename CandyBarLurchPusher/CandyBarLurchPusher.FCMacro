@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250707.0931>
+#  Last Modified : <250708.0757>
 #
 #  Description	
 #
@@ -136,7 +136,165 @@ class BirchPanel(metaclass=ABCMeta):
                                              maxX=(24*25.4)-50,
                                              maxY=(16*25.4)-50):
         pass
-      
+
+class InstanceIter(metaclass=ABCMeta):
+    @classmethod
+    def SetIter(cls):
+        #print('*** InstanceIter.__iter__(',cls,')')
+        try:
+            panels = cls.__Panels
+        except AttributeError:
+            cls.__Panels = set()
+        return cls.__Panels.__iter__()
+    def __del__(self):
+        #print('*** InstanceIter.__del__(',self,')')
+        #print('*** InstanceIter.__del__(): self.__class__ is ',self.__class__)
+        try:
+            panels = self.__class__.__Panels
+        except AttributeError:
+            self.__class__.__Panels = set()
+        self.__class__.__Panels.remove(self)
+    def __init__(self):
+        #print('*** InstanceIter.__init__(',self,')')
+        #print('*** InstanceIter.__init__(): self.__class__ is ',self.__class__)
+        try:
+            panels = self.__class__.__Panels
+        except AttributeError:
+            self.__class__.__Panels = set()
+        self.__class__.__Panels.add(self)
+        #print('*** InstanceIter.__init__(): self.__class__.__Panels is',self.__class__.__Panels)
+    @classmethod
+    def SortedList(cls):
+        return cls.SortSet(cls.__Panels)
+    @abstractmethod
+    def sortKey(self):
+        pass
+    @staticmethod
+    def __sortkey(item):
+        return item.sortKey()
+    @classmethod 
+    def SortSet(cls,panelSet):
+        panelList =  list(panelSet)
+        panelList.sort(key=cls.__sortkey)
+        return panelList
+
+class Panel(BirchPanel,InstanceIter):
+    def sortKey(self):
+        bbox = self.panel.BoundBox
+        if self.side=='end':
+            return math.hypot(bbox.ZLength,bbox.XLength)
+        elif self.side=='side':
+            return math.hypot(bbox.ZLength,bbox.YLength)
+        elif self.side=='bottom':
+            return math.hypot(bbox.XLength,bbox.YLength)
+    def __str__(self):
+        try:
+            result = '<Panel name="'+self.name+'"'
+            result = result+', origin='+str(self.origin)
+            result = result+', side="'+self.side+'">'
+            return result
+        except BaseException:
+            return "<Panel>"
+    def __init__(self,name,origin,width,height,*,side='end'):
+        super(Panel,self).__init__()
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        self.side = side
+        if self.side == 'side':
+            norm = Base.Vector(1,0,0)
+        elif self.side == 'end':
+            norm = Base.Vector(0,1,0)
+        elif self.side == 'bottom':
+            norm = Base.Vector(0,0,1)
+        else:
+            raise RuntimeError("unsuported side!")
+        panel = Part.makePlane(height,
+                               width,
+                               self.origin,
+                               norm).extrude(norm * -BirchPanel.Thickness())
+        self.panel = panel
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.panel
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.Color
+    def CutXZfingers(self,*,startx=0,endx=0,zoffset=0,yoffset=0):
+        x = startx
+        ZNorm=Base.Vector(0,0,1)
+        panel = self.panel
+        while x <= endx:
+            panel = panel.cut(Part.makePlane(self.FingerWidth,\
+                                             BirchPanel.Thickness(),\
+                                             self.origin.add(Base.Vector(x,yoffset,zoffset)),\
+                                             ZNorm).extrude(Base.Vector(0,0,BirchPanel.Thickness())))
+            x += self.FingerWidth*2
+        self.panel =  panel
+    def CutYZfingers(self,*,starty=0,endy=0,zoffset=0,xoffset=0):
+        y = starty
+        ZNorm=Base.Vector(0,0,1) 
+        panel = self.panel
+        while y <= endy:
+            panel = panel.cut(Part.makePlane(BirchPanel.Thickness(),\
+                                             self.FingerWidth,\
+                                             self.origin.add(Base.Vector(xoffset,y,zoffset)),\
+                                             ZNorm).extrude(Base.Vector(0,0,BirchPanel.Thickness())))
+            y += self.FingerWidth*2
+        self.panel =  panel
+    def CutZYfingers(self,*,startz=0,endz=0,yoffset=0,xoffset=0):
+        z = startz
+        YNorm=Base.Vector(0,1,0)
+        panel = self.panel
+        while z <= endz:
+            panel = panel.cut(Part.makePlane(self.FingerWidth,\
+                                             BirchPanel.Thickness(),\
+                                             self.origin.add(Base.Vector(xoffset,yoffset,z)),\
+                                             YNorm).extrude(Base.Vector(0,BirchPanel.Thickness(),0)))
+            z += self.FingerWidth*2
+        self.panel =  panel
+    def CutOtherPanel(self,otherPanel):
+        self.panel = self.panel.cut(otherPanel.panel)
+    def CutOtherShape(self,otherShape):
+        self.panel = self.panel.cut(otherShape)
+    def PanelPage(self,techDoc,page,lastX,lastY,deltaY,*,minX=50,minY=50,
+                                             maxX=(24*25.4)-50,
+                                             maxY=(16*25.4)-50):
+        bbox = self.panel.BoundBox         
+        if self.side == 'end':
+            direction = Base.Vector(0,1,0)
+            lengthX = bbox.XLength
+            lengthY = bbox.ZLength
+        elif self.side == 'side':
+            direction = Base.Vector(1,0,0)
+            lengthX = bbox.YLength
+            lengthY = bbox.ZLength
+        elif self.side == 'bottom':
+            direction = Base.Vector(0,0,1)
+            lengthX = bbox.XLength
+            lengthY = bbox.YLength
+        fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation = \
+            BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,minX,
+                                minY, maxX,maxY)
+        if not fitP:
+            return (True, -1, -1, deltaY)
+        #print("*** Panel.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
+        #print("*** Panel.PanelPage(): lengthX = ",lengthX,", lengthY = ", lengthY)
+        #print("*** Panel.PanelPage(): rotation = ",rotation)
+        obj = techDoc.addObject("Part::Feature",self.name)
+        obj.Shape = self.panel
+        obj.ViewObject.Visibility = False
+        panel = techDoc.addObject('TechDraw::DrawViewPart',self.name+"_View")
+        page.addView(panel)
+        panel.Source = obj
+        panel.X = currentX+lengthX/2
+        panel.Y = currentY+lengthY/2
+        panel.Rotation = rotation
+        panel.Direction = direction
+        return (True,currentX+lengthX+10,currentY,deltaY)
+        
 class Coupling(object):
     __QuarterInch = .25*25.4
     __Sixmm = 6
@@ -239,6 +397,9 @@ class QuarterInchBy28ThreaderRod(object):
         obj.ViewObject.ShapeColor=self.__Color
 
 class CandyBarLurchPusher(object):
+    __PusherHeight = 2*25.4
+    __PusherWidth  = 2.5*25.4
+    __PusherLength = 6*25.4
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -249,15 +410,67 @@ class CandyBarLurchPusher(object):
                     DFRobotGearMotor.DFRobotGearMotor_Left.OriginFromShaftHole(self.origin))
         self.threadedRod = QuarterInchBy28ThreaderRod(
                     name+"_ThreadedRod",
-                    origin.add(Base.Vector(0,-41.7,0)))
+                    origin.add(Base.Vector(0,-41.7,0)),
+                    self.__PusherLength+25.4)
         self.coupling = Coupling(name+"_Coupling",
                                  origin.add(Base.Vector(0,-41.7,0)))
+        endPanelOrigin = origin.add(Base.Vector(-self.__PusherWidth/2,
+                      -(DFRobotGearMotor.DFRobotGearMotor.GearBoxDepth+
+                        DFRobotGearMotor.DFRobotGearMotor.GearBoxSpacers),
+                                                -self.__PusherHeight/2))
+        self.endpanel = Panel(name+"_EndPanel",endPanelOrigin,
+                              self.__PusherWidth,self.__PusherHeight,
+                              side='end')
+        self.endpanel.CutOtherShape(self.motor.ShaftHole(endPanelOrigin.y,
+                                    -BirchPanel.Thickness()))
+        for i in range(4):
+            self.endpanel.CutOtherShape(self.motor.MountingHole(i,endPanelOrigin.y,
+                                        -BirchPanel.Thickness()))
+        self.endpanel.CutXZfingers(endx=self.__PusherWidth,
+                                   yoffset=-BirchPanel.Thickness())
+        self.endpanel.CutZYfingers(endz=self.__PusherHeight,
+                                   yoffset=-BirchPanel.Thickness())
+        self.endpanel.CutZYfingers(endz=self.__PusherHeight,
+                                   yoffset=-BirchPanel.Thickness(),
+                                   xoffset=self.__PusherWidth-
+                                            BirchPanel.Thickness())
+        self.bottom = Panel(name+"_BottomPanel",
+                            endPanelOrigin.add(
+                                    Base.Vector(0,-self.__PusherLength*2,
+                                                BirchPanel.Thickness())),
+                            self.__PusherLength*2,self.__PusherWidth,
+                            side='bottom')
+        self.bottom.CutOtherPanel(self.endpanel)
+        self.bottom.CutYZfingers(endy=self.__PusherLength*2,
+                                 zoffset=-BirchPanel.Thickness())
+        self.bottom.CutYZfingers(endy=self.__PusherLength*2,
+                                 xoffset=self.__PusherWidth-
+                                         BirchPanel.Thickness(),
+                                 zoffset=-BirchPanel.Thickness())
+        self.left=Panel(name+"_LeftPanel",
+                        endPanelOrigin.add(Base.Vector(BirchPanel.Thickness(),
+                                                       0,0)),
+                                self.__PusherLength*2,self.__PusherHeight,
+                                side='side')
+        self.left.CutOtherPanel(self.endpanel)
+        self.left.CutOtherPanel(self.bottom)
+        self.right=Panel(name+"_RightPanel",
+                        endPanelOrigin.add(Base.Vector(self.__PusherWidth,
+                                                       0,0)),
+                                self.__PusherLength*2,self.__PusherHeight,
+                                side='side')
+        self.right.CutOtherPanel(self.endpanel)
+        self.right.CutOtherPanel(self.bottom)
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
         self.motor.show(doc)
         self.threadedRod.show(doc)
         self.coupling.show(doc)
+        self.endpanel.show(doc)
+        self.bottom.show(doc)
+        self.left.show(doc)
+        self.right.show(doc)
         
 
 if __name__ == '__main__':
@@ -266,5 +479,5 @@ if __name__ == '__main__':
     doc = App.newDocument("Pusher")
     pusher = CandyBarLurchPusher("Pusher",Base.Vector(0,0,0))
     pusher.show(doc)
-    Gui.activeDocument().activeView().viewTop()
+    Gui.activeDocument().activeView().viewFront()
     Gui.SendMsgToActiveView("ViewFit")
