@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250708.1556>
+#  Last Modified : <250709.1042>
 #
 #  Description	
 #
@@ -458,30 +458,32 @@ class CandyBarLurchPusher(object):
                                    yoffset=-BirchPanel.Thickness(),
                                    xoffset=self.__PusherWidth-
                                             BirchPanel.Thickness())
+        bottomlen = self.__PusherLength*2 - 25.4
+        sidelen = bottomlen - 25.4
         self.bottom = Panel(name+"_BottomPanel",
                             endPanelOrigin.add(
-                                    Base.Vector(0,-self.__PusherLength*2,
+                                    Base.Vector(0,-bottomlen,
                                                 BirchPanel.Thickness())),
-                            self.__PusherLength*2,self.__PusherWidth,
+                            bottomlen,self.__PusherWidth,
                             side='bottom')
         self.bottom.CutOtherPanel(self.endpanel)
-        self.bottom.CutYZfingers(endy=self.__PusherLength*2,
+        self.bottom.CutYZfingers(starty=25.4,endy=bottomlen,
                                  zoffset=-BirchPanel.Thickness())
-        self.bottom.CutYZfingers(endy=self.__PusherLength*2,
+        self.bottom.CutYZfingers(starty=25.4,endy=bottomlen,
                                  xoffset=self.__PusherWidth-
                                          BirchPanel.Thickness(),
                                  zoffset=-BirchPanel.Thickness())
         self.left=Panel(name+"_LeftPanel",
                         endPanelOrigin.add(Base.Vector(BirchPanel.Thickness(),
                                                        0,0)),
-                                self.__PusherLength*2,self.__PusherHeight,
+                                sidelen,self.__PusherHeight,
                                 side='side')
         self.left.CutOtherPanel(self.endpanel)
         self.left.CutOtherPanel(self.bottom)
         self.right=Panel(name+"_RightPanel",
                         endPanelOrigin.add(Base.Vector(self.__PusherWidth,
                                                        0,0)),
-                                self.__PusherLength*2,self.__PusherHeight,
+                                sidelen,self.__PusherHeight,
                                 side='side')
         self.right.CutOtherPanel(self.endpanel)
         self.right.CutOtherPanel(self.bottom)
