@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250710.1245>
+#  Last Modified : <250710.1648>
 #
 #  Description	
 #
@@ -461,6 +461,9 @@ class Bearing_6383K14(object):
     __Filename=os.path.join(os.path.dirname(__file__),
                             "6383K14_Ball Bearing.STEP")
     __Color=(.5,.5,.5)
+    def BearingHole(self,Y,Depth):
+        holeOrigin=Base.Vector(self.origin.x,self.origin.y+Y,self.origin.z)
+        return(Part.makeCylinder(self.__OutsideDiameter/2,Depth,holeOrigin,Base.Vector(0,-1,0)))
     def __init__(self,name,origin,*,
                  rotationAxis=Base.Vector(1,0,0),rotationAngle=90):
         self.name = name
@@ -618,7 +621,8 @@ class CandyBarLurchPusher(object):
                                                     -(self.__PusherLength+
                                                       38.53),
                                                     0)))
-        self.pillowBlock.CutOtherShape(self.bearing.bearing)
+        self.pillowBlock.CutOtherShape(
+                self.bearing.BearingHole(BirchPanel.Thickness(),BirchPanel.Thickness()*3))
         pusherBaseOrigin = origin.add(
                             Base.Vector(0,-(53.7+(BirchPanel.Thickness()*2)),0))
         plength = self.__PusherLength-(3*BirchPanel.Thickness())
@@ -713,6 +717,15 @@ class CandyBarLurchPusher(object):
         self.rightPusher.show(doc)
         self.pusherFront.show(doc)
 
+Pages = list()
+def NewPage(techdoc,pagenum=0):
+    pagenum += 1
+    page = techdoc.addObject('TechDraw::DrawPage','SmallCutPanelPage_%03d'%(pagenum))
+    page.Template = techdoc.SmallCutPanelTemplate
+    page.ViewObject.show()
+    Pages.append((page, pagenum))
+    return (page, pagenum)
+
 if __name__ == '__main__':
     if "Pusher" in App.listDocuments().keys():
         App.closeDocument("Pusher")
@@ -721,3 +734,39 @@ if __name__ == '__main__':
     pusher.show(doc)
     Gui.activeDocument().activeView().viewTop()
     Gui.SendMsgToActiveView("ViewFit")
+    if "Pusher_BirchPanels" in App.listDocuments().keys():
+        App.closeDocument("Pusher_BirchPanels")
+    techdoc = App.newDocument("Pusher_BirchPanels")
+    techdoc.addObject('TechDraw::DrawSVGTemplate','SmallCutPanelTemplate')
+    techdoc.SmallCutPanelTemplate.Template = os.path.join(
+                        os.path.dirname(__file__),"smallcutpanel.svg")
+    page, pagenum = NewPage(techdoc)
+    pages = list()
+    lastX = 50
+    lastY = 50
+    deltaY = 0
+    for panel in Panel.SortedList():
+        for i in range(2):
+            hasPanel, newX, newY, deltaY = panel.PanelPage(techdoc,
+                                                           page,
+                                                           lastX,lastY,deltaY)
+            if not hasPanel:
+                break
+            if newX < 0 and newY < 0:
+                # need new page
+                page, pagenum = NewPage(techdoc,pagenum)
+                lastX = 50
+                lastY = 50
+                deltaY = 0
+            else:
+                lastX = newX
+                lastY = newY
+                break
+    techdoc.recompute()
+    sleep(500)
+    for page,number in Pages:
+        TechDrawGui.exportPageAsSvg(page,
+                     os.path.join(os.path.dirname(__file__),
+                                  "Pusher_Panel%03d.svg"%(number)))
+        
+
