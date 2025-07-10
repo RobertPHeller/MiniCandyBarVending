@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250709.1042>
+#  Last Modified : <250710.1245>
 #
 #  Description	
 #
@@ -330,7 +330,7 @@ class Coupling(object):
         obj.ViewObject.ShapeColor=self.__Color
 
 
-class QuarterInchBy28ThreaderRod(object):
+class QuarterInchBy28ThreadedRod(object):
     __QuarterInch = .25*25.4
     __ThreadsPerInch = 28
     __Inch = 25.4
@@ -338,11 +338,7 @@ class QuarterInchBy28ThreaderRod(object):
     __Pitch =   0.907
     __MajorDiameter = 6.35
     __MinorDiameter = 5.271
-    __PitchDiameter = 5.761
     __ThreadHeight =    0.49
-    __Addendum = 0.295
-    __Root = 0.114
-    __LeadAngle = 2.87# degrees
     __Padding = (1/32)*25.4 
     @classmethod
     def makeProfile(cls):
@@ -366,7 +362,69 @@ class QuarterInchBy28ThreaderRod(object):
             raise RuntimeError("origin is not a Vector!")
         self.origin = origin
         shaft = Part.makeCylinder(self.__QuarterInch/2,length,origin,Base.Vector(0,-1,0))
-        wprofile = QuarterInchBy28ThreaderRod.makeProfile()
+        wprofile = QuarterInchBy28ThreadedRod.makeProfile()
+        helixpad = .01
+        wprofile.translate(Base.Vector(0,0,-helixpad))
+        helix = Part.makeLongHelix(self.__Pitch,length+self.__Pitch+helixpad*2,self.__MajorDiameter/2,0,False)
+        helix.translate(Base.Vector(0,0,-helixpad)) 
+        thread = Part.BRepOffsetAPI.MakePipeShell(helix)
+        thread.setFrenetMode(True)  # Sets a Frenet (true) or a CorrectedFrenet(false) trihedron to perform the sweeping.  False = corkscrew.
+        thread.setTransitionMode(1)  # 0=Transformed, *1=right corner transition, 2=Round corner
+        thread.add(wprofile, False)	# WithContact = connect to helix.  WithCorrection = orthogonal to helix tangent.
+        if not thread.isReady():
+            self.rod = shaft
+            raise RuntimeError("BRepOffsetAPI not ready error sweeping thread profile.\n")
+        thread.build()
+        if not thread.makeSolid():
+            self.rod = shaft
+            raise RuntimeError("BRepOffsetAPI faled building swept thread solid.\n")
+        sthread = thread.shape()
+        sthread = sthread.rotate(Base.Vector(0,0,0),Base.Vector(1,0,0),90)
+        sthread = sthread.translate(origin)
+        threadbody = shaft.cut(sthread)
+        self.rod = threadbody
+        
+    def show(self,doc=None):        
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.rod
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.__Color
+
+class QuarterInchBy20ThreadedRod(object):
+    __QuarterInch = .25*25.4
+    __ThreadsPerInch = 20
+    __Inch = 25.4
+    __Color = (.8, .8, .8)
+    __Pitch =   1.270
+    __MajorDiameter = 6.35
+    __MinorDiameter = 4.79298
+    __ThreadHeight =    (6.35-4.79298)/2
+    __Padding = (1/32)*25.4 
+    @classmethod
+    def makeProfile(cls):
+        profheight = cls.__ThreadHeight
+        minordiameter = cls.__MinorDiameter
+        padding = cls.__Padding
+        pitch = cls.__Pitch
+        v1 = Base.Vector(minordiameter/2 + profheight + padding, 0, padding/math.sqrt(3))        
+        v2 = Base.Vector(minordiameter/2, 0, -pitch*5/16)
+        v3 = Base.Vector(minordiameter/2, 0, -pitch*9/16)        
+        v4 = Base.Vector(minordiameter/2 + profheight + padding, 0, -pitch*7/8 - padding/math.sqrt(3))
+        l1 = Part.LineSegment(v1,v2)
+        l3 = Part.LineSegment(v3,v4)
+        l4 = Part.LineSegment(v4,v1)
+        l2 = Part.LineSegment(v2,v3) 
+        sprofile = Part.Shape([l1, l2, l3, l4])
+        return Part.Wire(sprofile.Edges)
+    def __init__(self,name,origin,length=6*25.4):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        shaft = Part.makeCylinder(self.__QuarterInch/2,length,origin,Base.Vector(0,-1,0))
+        wprofile = QuarterInchBy20ThreadedRod.makeProfile()
         helixpad = .01
         wprofile.translate(Base.Vector(0,0,-helixpad))
         helix = Part.makeLongHelix(self.__Pitch,length+self.__Pitch+helixpad*2,self.__MajorDiameter/2,0,False)
@@ -420,6 +478,61 @@ class Bearing_6383K14(object):
         obj.Label=self.name
         obj.ViewObject.ShapeColor=self.__Color
 
+class Steel_Tee_Nut_Inserts(metaclass=ABCMeta):
+    @abstractproperty
+    def Filename(self):
+        pass
+    @abstractproperty
+    def NutHoleDiameter(self):
+        pass
+    @abstractproperty
+    def NutHoleLength(self):
+        pass
+    def HoleCut(self,*,dir=Base.Vector(0,-1,0)):
+        length = self.NutHoleLength
+        s=Part.makeCylinder(self.NutHoleDiameter/2,length,self.origin,dir)
+        return s
+    __Color=(.5,.5,.5)
+    def __init__(self,name,origin,*,
+                 rotationAxis=Base.Vector(1,0,0),rotationAngle=180):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        nut = Part.read(self.Filename)
+        nut = nut.rotate(Base.Vector(0,0,0),rotationAxis,rotationAngle)
+        self.nut = nut.translate(self.origin)
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Part::Feature",self.name)
+        obj.Shape = self.nut
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.__Color
+
+class Steel_Tee_Nut_Inserts_90975A102(Steel_Tee_Nut_Inserts):
+    @property
+    def Filename(self):
+        return os.path.join(os.path.dirname(__file__),
+                            "90975A102_Steel Tee Nut Inserts.STEP")
+    @property
+    def NutHoleDiameter(self):
+        return .17*25.4
+    @property
+    def NutHoleLength(self):
+        return .25*25.4
+class Steel_Tee_Nut_Inserts_90975A104(Steel_Tee_Nut_Inserts):
+    @property
+    def Filename(self):
+        return os.path.join(os.path.dirname(__file__),
+                            "90975A104_Steel Tee Nut Inserts.STEP")
+    @property
+    def NutHoleDiameter(self):
+        return .305*25.4
+    @property
+    def NutHoleLength(self):
+        return (3/16)*25.4
+
 class CandyBarLurchPusher(object):
     __PusherHeight = 2*25.4
     __PusherWidth  = 2.5*25.4
@@ -432,7 +545,7 @@ class CandyBarLurchPusher(object):
         self.motor = DFRobotGearMotor.DFRobotGearMotor_Left(
                     name+"_Motor",
                     DFRobotGearMotor.DFRobotGearMotor_Left.OriginFromShaftHole(self.origin))
-        self.threadedRod = QuarterInchBy28ThreaderRod(
+        self.threadedRod = QuarterInchBy20ThreadedRod(
                     name+"_ThreadedRod",
                     origin.add(Base.Vector(0,-41.7,0)),
                     self.__PusherLength)
@@ -489,10 +602,10 @@ class CandyBarLurchPusher(object):
         self.right.CutOtherPanel(self.bottom)
         self.pillowBlock = Panel(name+"_PillowBlock",
                                  endPanelOrigin.add(
-                                    Base.Vector(BirchPanel.Thickness()*2,
+                                    Base.Vector((BirchPanel.Thickness()*2)+2,
                                                 -(self.__PusherLength+13.32),
                                                 0)),
-                                 self.__PusherWidth-(BirchPanel.Thickness()*4),
+                                 self.__PusherWidth-(BirchPanel.Thickness()*4)-4,
                                  self.__PusherHeight,
                                  side='end')
         self.pillowBlock.CutXZfingers(endx=self.__PusherWidth-
@@ -506,6 +619,79 @@ class CandyBarLurchPusher(object):
                                                       38.53),
                                                     0)))
         self.pillowBlock.CutOtherShape(self.bearing.bearing)
+        pusherBaseOrigin = origin.add(
+                            Base.Vector(0,-(53.7+(BirchPanel.Thickness()*2)),0))
+        plength = self.__PusherLength-(3*BirchPanel.Thickness())
+        pwidth = self.__PusherWidth-(2*BirchPanel.Thickness())-2
+        pheight = self.__PusherHeight-BirchPanel.Thickness()-1
+        pusherEndOrigin = pusherBaseOrigin.add(
+                                Base.Vector(-pwidth/2,
+                                            -BirchPanel.Thickness(),
+                                            -pheight/2))
+        self.pusherEnd = Panel(name+"_PusherEndPanel",
+                               pusherEndOrigin,
+                               pwidth,pheight,side='end')
+        self.pusherTNut = Steel_Tee_Nut_Inserts_90975A104(name+"_PusherTNut",
+                                pusherBaseOrigin.add(
+                                    Base.Vector(0,-(BirchPanel.Thickness()-
+                                                    (.047*25.4)),0)))
+        self.pusherEnd.CutOtherShape(self.pusherTNut.HoleCut())
+        self.pusherEnd.CutZYfingers(endz=pheight,
+                                    yoffset=-BirchPanel.Thickness())
+        self.pusherEnd.CutZYfingers(endz=pheight,
+                                    yoffset=-BirchPanel.Thickness(),
+                                    xoffset=pwidth-BirchPanel.Thickness())
+        self.pusherEndPlate = Panel(name+"_PusherEndPlate",
+                                    pusherBaseOrigin.add(
+                                        Base.Vector(-18.75,
+                                                     (.047*25.4),
+                                                    -18.75)),
+                                    38.1,38.1,side='end')
+        self.pusherEndPlate.CutOtherShape(
+            Part.makeCylinder(self.pusherTNut.NutHoleDiameter/2,
+                              BirchPanel.Thickness()*2,
+                              self.pusherTNut.origin,
+                              Base.Vector(0,1,0)))
+        xys = [(-9.525,-9.525),(-9.525,9.525),(9.525,-9.525),(9.525,9.525)]
+        self.pusherEndTNs = list()
+        for i,xy in enumerate(xys):
+            x,y = xy
+            nut = Steel_Tee_Nut_Inserts_90975A102(name+"_PusherPlaneTNut%d"%
+                                                        (i),
+                                                  pusherBaseOrigin.add(
+                                                    Base.Vector(x,
+                                                                -(BirchPanel.Thickness()*2+(.031*25.4)),
+                                                                y)),
+                                                 rotationAngle=0)
+            self.pusherEndTNs.append(nut)
+            hole = Part.makeCylinder(nut.NutHoleDiameter/2,
+                                  BirchPanel.Thickness()*3,
+                                  nut.origin,Base.Vector(0,1,0))
+            self.pusherEnd.CutOtherShape(hole)
+            self.pusherEndPlate.CutOtherShape(hole)
+        plength = self.__PusherLength-(21.53-BirchPanel.Thickness()*2)
+        self.leftPusher=Panel(name+"_LeftPusherPanel",
+                              pusherEndOrigin.add(
+                                Base.Vector(BirchPanel.Thickness(),0,0)),
+                              plength,pheight,side='side')
+        self.leftPusher.CutOtherPanel(self.pusherEnd)
+        self.rightPusher=Panel(name+"_RightPusherPanel",
+                               pusherEndOrigin.add(Base.Vector(pwidth,0,0)),
+                               plength,pheight,side='side')
+        self.rightPusher.CutOtherPanel(self.pusherEnd)
+        self.pusherFront = Panel(name+"_PuserFront",
+                                 pusherEndOrigin.add(
+                                    Base.Vector(0,
+                                                -plength+
+                                                 BirchPanel.Thickness(),0)),
+                                 pwidth,pheight,side='end')
+        self.pusherFront.CutZYfingers(endz=pheight,
+                                      yoffset=-BirchPanel.Thickness())
+        self.pusherFront.CutZYfingers(endz=pheight,
+                                      yoffset=-BirchPanel.Thickness(),
+                                      xoffset=pwidth-BirchPanel.Thickness())
+        self.leftPusher.CutOtherPanel(self.pusherFront)
+        self.rightPusher.CutOtherPanel(self.pusherFront)
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -518,7 +704,14 @@ class CandyBarLurchPusher(object):
         self.right.show(doc)
         self.pillowBlock.show(doc)
         self.bearing.show(doc)
-        
+        self.pusherEnd.show(doc)
+        self.pusherTNut.show(doc)
+        self.pusherEndPlate.show(doc)
+        for o in self.pusherEndTNs:
+            o.show(doc)
+        self.leftPusher.show(doc)
+        self.rightPusher.show(doc)
+        self.pusherFront.show(doc)
 
 if __name__ == '__main__':
     if "Pusher" in App.listDocuments().keys():
