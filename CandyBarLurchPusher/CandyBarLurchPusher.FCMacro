@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250711.1039>
+#  Last Modified : <250711.1524>
 #
 #  Description	
 #
@@ -88,6 +88,7 @@ class BirchPanel(metaclass=ABCMeta):
             rotation = 90
         if currentX+lengthX < maxX and \
            currentY+lengthY < maxY:
+            #print("*** BirchPanel.FitPanel(A): deltaY = ",deltaY,", lengthY = ",lengthY)
             deltaY = max(deltaY,lengthY+10)
             return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
         elif currentX+lengthX > maxX and \
@@ -95,7 +96,7 @@ class BirchPanel(metaclass=ABCMeta):
            minX+lengthX < maxX:
             currentX = minX
             currentY += deltaY
-            return (True, currentX, currentY, lengthX, lengthY+10, currentY+10, rotation)
+            return (True, currentX, currentY, lengthX, lengthY+10, deltaY, rotation)
         elif currentY+lengthY > maxY and \
              currentY+lengthX < maxY and \
              currentX+lengthY < maxX:
@@ -106,6 +107,7 @@ class BirchPanel(metaclass=ABCMeta):
                 rotation = 90
             else:
                 rotation = 0
+            #print("*** BirchPanel.FitPanel(B): deltaY = ",deltaY,", lengthY = ",lengthY)
             deltaY = max(deltaY,lengthY+10)
             return (True, currentX, currentY, lengthX, lengthY, deltaY, rotation)
         elif currentY+deltaY+lengthX < maxY and \
@@ -119,7 +121,7 @@ class BirchPanel(metaclass=ABCMeta):
                 rotation = 0
             currentX = minX
             currentY += deltaY
-            return (True, currentX, currentY, lengthX, lengthY+10, currentY+10, rotation)
+            return (True, currentX, currentY, lengthX, lengthY+10, deltaY, rotation)
         else:
             return (False, lastX, lastY, lengthX, lengthY, deltaY, rotation)
     @staticmethod
@@ -278,6 +280,7 @@ class Panel(BirchPanel,InstanceIter):
         fitP, currentX, currentY, lengthX, lengthY, deltaY, rotation = \
             BirchPanel.FitPanel(page,lastX,lastY,lengthX,lengthY,deltaY,minX,
                                 minY, maxX,maxY)
+        #print("*** BirchPanel.FitPanel(",self.name,") returns deltaY = ",deltaY)
         if not fitP:
             return (True, -1, -1, deltaY)
         #print("*** Panel.PanelPage(): currentX = ",currentX,", currentY = ",currentY)
@@ -822,7 +825,10 @@ if __name__ == '__main__':
     lastY = 50
     deltaY = 0
     for panel in Panel.SortedList():
+        #print("*** panel is",panel)
         for i in range(2):
+            #print("*** i = ",i)
+            #print("*** pagenum = ",pagenum,", lastX = ",lastX,", lastY = ",lastY,", deltaY = ",deltaY)
             hasPanel, newX, newY, deltaY = panel.PanelPage(techdoc,
                                                            page,
                                                            lastX,lastY,deltaY)
