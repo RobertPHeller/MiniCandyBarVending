@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250710.1648>
+#  Last Modified : <250711.0914>
 #
 #  Description	
 #
@@ -536,10 +536,59 @@ class Steel_Tee_Nut_Inserts_90975A104(Steel_Tee_Nut_Inserts):
     def NutHoleLength(self):
         return (3/16)*25.4
 
+class XCG3_S1Z1(object):
+    __Filename = os.path.join(os.path.dirname(__file__),"XCG3-S1Z1.stp")
+    __Color = (0.0,0.0,0.0)
+    RollerDepth = 9.95-4.91
+    SwitchBodyWidth = 19.9
+    SwitchBodyThickness = 6.4
+    SwitchBodyHeight = 9.5
+    def __init__(self,name,origin,*,
+                 rotationAxis=Base.Vector(1,0,0),rotationAngle=90):
+        self.name = name
+        if not isinstance(origin,Base.Vector):
+            raise RuntimeError("origin is not a Vector!")
+        self.origin = origin
+        switch = Part.read(self.__Filename)
+        switch = switch.rotate(Base.Vector(0,0,0),rotationAxis,rotationAngle)
+        switch = switch.translate(self.origin)
+        self.switch = switch
+    def show(self,doc=None):
+        if doc==None:
+            doc = App.activeDocument()
+        obj = doc.addObject("Mesh::Feature",self.name)
+        obj.Mesh = self.switch
+        obj.Label=self.name
+        obj.ViewObject.ShapeColor=self.__Color
+
 class CandyBarLurchPusher(object):
     __PusherHeight = 2*25.4
     __PusherWidth  = 2.5*25.4
     __PusherLength = 6*25.4
+    __LimitSwitchMountThickness = XCG3_S1Z1.SwitchBodyHeight
+    __LimitSwitchMountHeight = 2*25.4+\
+                                XCG3_S1Z1.SwitchBodyWidth-\
+                                BirchPanel.Thickness()-\
+                                XCG3_S1Z1.RollerDepth
+    __LimitSwitchMountWidth = 2.5*25.4-\
+                    (BirchPanel.Thickness()*4)-\
+                    4-\
+                    (XCG3_S1Z1.SwitchBodyThickness*2)
+    __LimitSwitchMountOffset = Base.Vector(XCG3_S1Z1.SwitchBodyThickness,
+                                           -BirchPanel.Thickness()*2,
+                                           BirchPanel.Thickness())
+    def __LimitSwitchMount(self):
+        limitswitchorigin = self.pillowBlockOrigin.add(
+                                        self.__LimitSwitchMountOffset)
+        limitswitchmount  = Part.makePlane(self.__LimitSwitchMountHeight,
+                                           self.__LimitSwitchMountWidth,
+                                           limitswitchorigin,
+                                           Base.Vector(0,1,0))\
+                  .extrude(Base.Vector(0,self.__LimitSwitchMountThickness,0))
+        limitswitchmount = limitswitchmount.cut(self.pillowBlock.panel)
+        self.limitswitchmount = limitswitchmount.cut(
+                self.bearing.BearingHole(BirchPanel.Thickness(),
+                                         self.__LimitSwitchMountThickness))
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -603,13 +652,14 @@ class CandyBarLurchPusher(object):
                                 side='side')
         self.right.CutOtherPanel(self.endpanel)
         self.right.CutOtherPanel(self.bottom)
-        self.pillowBlock = Panel(name+"_PillowBlock",
-                                 endPanelOrigin.add(
+        self.pillowBlockOrigin = endPanelOrigin.add(
                                     Base.Vector((BirchPanel.Thickness()*2)+2,
                                                 -(self.__PusherLength+13.32),
-                                                0)),
+                                                0))
+        self.pillowBlock = Panel(name+"_PillowBlock",
+                                 self.pillowBlockOrigin,
                                  self.__PusherWidth-(BirchPanel.Thickness()*4)-4,
-                                 self.__PusherHeight,
+                                 self.__PusherHeight-XCG3_S1Z1.RollerDepth,
                                  side='end')
         self.pillowBlock.CutXZfingers(endx=self.__PusherWidth-
                                            (BirchPanel.Thickness()*4),
@@ -696,6 +746,7 @@ class CandyBarLurchPusher(object):
                                       xoffset=pwidth-BirchPanel.Thickness())
         self.leftPusher.CutOtherPanel(self.pusherFront)
         self.rightPusher.CutOtherPanel(self.pusherFront)
+        self.__LimitSwitchMount()
     def show(self,doc=None):
         if doc==None:
             doc = App.activeDocument()
@@ -716,6 +767,10 @@ class CandyBarLurchPusher(object):
         self.leftPusher.show(doc)
         self.rightPusher.show(doc)
         self.pusherFront.show(doc)
+        obj = doc.addObject("Part::Feature",self.name+"_LimitSwitchMount")
+        obj.Shape = self.limitswitchmount
+        obj.Label=self.name+"_LimitSwitchMount"
+        obj.ViewObject.ShapeColor=(0.0,1.0,0.0)
 
 Pages = list()
 def NewPage(techdoc,pagenum=0):
@@ -769,4 +824,5 @@ if __name__ == '__main__':
                      os.path.join(os.path.dirname(__file__),
                                   "Pusher_Panel%03d.svg"%(number)))
         
+
 
