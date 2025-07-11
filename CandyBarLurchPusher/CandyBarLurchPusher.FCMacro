@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250711.1024>
+#  Last Modified : <250711.1039>
 #
 #  Description	
 #
@@ -573,9 +573,9 @@ class CandyBarLurchPusher(object):
                                 XCG3_S1Z1.RollerDepth
     __LimitSwitchMountWidth = 2.5*25.4-\
                     (BirchPanel.Thickness()*4)-\
-                    4-\
+                    10-\
                     (XCG3_S1Z1.SwitchBodyThickness*2)
-    __LimitSwitchMountOffset = Base.Vector(XCG3_S1Z1.SwitchBodyThickness,
+    __LimitSwitchMountOffset = Base.Vector(XCG3_S1Z1.SwitchBodyThickness+3,
                                            -BirchPanel.Thickness()*2,
                                            BirchPanel.Thickness())
     def __LimitSwitchMount(self):
@@ -695,11 +695,11 @@ class CandyBarLurchPusher(object):
                                         0))
         plength = self.__PusherLength-(3*BirchPanel.Thickness())
         pwidth = self.__PusherWidth-(2*BirchPanel.Thickness())-2
-        pheight = self.__PusherHeight-BirchPanel.Thickness()-1
+        pheight = self.__PusherHeight-BirchPanel.Thickness()
         pusherEndOrigin = pusherBaseOrigin.add(
                                 Base.Vector(-pwidth/2,
                                             -BirchPanel.Thickness(),
-                                            -pheight/2+1.1))
+                                            -pheight/2+1.6))
         self.pusherEnd = Panel(name+"_PusherEndPanel",
                                pusherEndOrigin,
                                pwidth,pheight,side='end')
