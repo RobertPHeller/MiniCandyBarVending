@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250711.1524>
+#  Last Modified : <250711.1805>
 #
 #  Description	
 #
@@ -53,7 +53,7 @@ sys.path.append(os.path.dirname(__file__))
 
 import DFRobotGearMotor
 
-import time
+import time, datetime
 from PySide.QtCore import QCoreApplication, QEventLoop, QTimer
 def execute(loop, ms):
     timer = QTimer()
@@ -609,6 +609,56 @@ class CandyBarLurchPusher(object):
                                                 (XCG3_S1Z1.SwitchBodyWidth/2))),
                                       rotationAngle=270)
 
+    def LimitSwitchMountDrawing(self,techdoc):
+        template = techdoc.addObject('TechDraw::DrawSVGTemplate',
+                                     'USLetterTemplate')
+        template.Template = App.getResourceDir()+"Mod/TechDraw/Templates/USLetter_Landscape.svg"
+        edt = template.EditableTexts
+        edt['CompanyName'] = "Deepwoods Software"
+        edt['CompanyAddress'] = '51 Locke Hill Road, Wendell, MA 01379 USA' 
+        edt['DrawingTitle1']= 'Candy Bar Lurch Pusher'
+        edt['DrawingTitle2']= 'Limit Switch Mount Block'
+        edt['DrawingTitle3']= ''
+        edt['DrawnBy'] = "Robert Heller"
+        edt['CheckedBy'] = ""
+        edt['Approved1'] = ""
+        edt['Approved2'] = ""
+        edt['Code'] = ""
+        edt['Weight'] = ''
+        edt['DrawingNumber'] = datetime.datetime.now().ctime()
+        edt['Revision'] = "A"
+        template.EditableTexts = edt
+        page = techdoc.addObject('TechDraw::DrawPage','LimitSwitchMountBlock')
+        page.Template = techdoc.USLetterTemplate
+        edt = page.Template.EditableTexts
+        edt['Scale'] = '1'
+        edt['Sheet'] = "Sheet 1 of 1"
+        page.Template.EditableTexts = edt
+        page.ViewObject.show()
+        obj = techdoc.addObject("Part::Feature",self.name+"_LimitSwitchMount")
+        obj.Shape = self.limitswitchmount
+        obj.ViewObject.Visibility = False
+        LSM = obj
+        front = techdoc.addObject('TechDraw::DrawViewPart',
+                                  'LimitSwitchMountFrontView')
+        page.addView(front)
+        front.Source = LSM
+        front.X =  75
+        front.Y = 130
+        front.Scale = 1
+        front.Direction=(0.0,1.0,0.0)
+        front.Caption = "Front"
+        side = techdoc.addObject('TechDraw::DrawViewPart',
+                                  'LimitSwitchMountSideView')
+        page.addView(side)
+        side.Source = LSM
+        side.X = 175
+        side.Y = 130
+        side.Scale = 1
+        side.Direction=(1.0,0.0,0.0)
+        side.Caption = "Side"
+        
+        return page
     def __init__(self,name,origin):
         self.name = name
         if not isinstance(origin,Base.Vector):
@@ -844,6 +894,7 @@ if __name__ == '__main__':
                 lastX = newX
                 lastY = newY
                 break
+    page = pusher.LimitSwitchMountDrawing(techdoc)
     techdoc.recompute()
     sleep(500)
     for page,number in Pages:
@@ -851,5 +902,7 @@ if __name__ == '__main__':
                      os.path.join(os.path.dirname(__file__),
                                   "Pusher_Panel%03d.svg"%(number)))
         
-
+    TechDrawGui.exportPageAsPdf(page,
+                      os.path.join(os.path.dirname(__file__),
+                                   "LimitSwitchMount.pdf"))
 
