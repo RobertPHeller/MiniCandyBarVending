@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250711.1805>
+#  Last Modified : <250712.0909>
 #
 #  Description	
 #
@@ -459,14 +459,18 @@ class QuarterInchBy20ThreadedRod(object):
 
 class Bearing_6383K14(object):
     __InsideDiameter = .25*25.4
-    __OutsideDiameter = .75*25.4
+    __OutsideDiameter = .875*25.4
+    @property
+    def OutsideDiameter(self):
+        return self.__OutsideDiameter
     __Width = .25*25.4
     __Filename=os.path.join(os.path.dirname(__file__),
                             "6383K14_Ball Bearing.STEP")
     __Color=(.5,.5,.5)
     def BearingHole(self,Y,Depth):
         holeOrigin=Base.Vector(self.origin.x,self.origin.y+Y,self.origin.z)
-        return(Part.makeCylinder(self.__OutsideDiameter/2,Depth,holeOrigin,Base.Vector(0,-1,0)))
+        return(Part.makeCylinder(self.__OutsideDiameter/2,Depth,holeOrigin,
+                                 Base.Vector(0,-1,0)))
     def __init__(self,name,origin,*,
                  rotationAxis=Base.Vector(1,0,0),rotationAngle=90):
         self.name = name
@@ -569,16 +573,10 @@ class CandyBarLurchPusher(object):
     __PusherHeight = 2*25.4
     __PusherWidth  = 2.5*25.4
     __PusherLength = 6*25.4
-    __LimitSwitchMountThickness = XCG3_S1Z1.SwitchBodyHeight
-    __LimitSwitchMountHeight = 2*25.4+\
-                                XCG3_S1Z1.SwitchBodyWidth-\
-                                BirchPanel.Thickness()-\
-                                XCG3_S1Z1.RollerDepth
-    __LimitSwitchMountWidth = 2.5*25.4-\
-                    (BirchPanel.Thickness()*4)-\
-                    10-\
-                    (XCG3_S1Z1.SwitchBodyThickness*2)
-    __LimitSwitchMountOffset = Base.Vector(XCG3_S1Z1.SwitchBodyThickness+3,
+    __LimitSwitchMountThickness = (3/8)*25.4
+    __LimitSwitchMountHeight = 2.5*25.4
+    __LimitSwitchMountWidth = 1.125*25.4
+    __LimitSwitchMountOffset = Base.Vector(10.7-((.125*25.4)/2),
                                            -BirchPanel.Thickness()*2,
                                            BirchPanel.Thickness())
     def __LimitSwitchMount(self):
@@ -590,8 +588,9 @@ class CandyBarLurchPusher(object):
                                            Base.Vector(0,1,0))\
                   .extrude(Base.Vector(0,self.__LimitSwitchMountThickness,0))
         limitswitchmount = limitswitchmount.cut(self.pillowBlock.panel)
+        self.limitswitchmountorigin = limitswitchorigin
         self.limitswitchmount = limitswitchmount.cut(
-                self.bearing.BearingHole(BirchPanel.Thickness(),
+                self.bearing.BearingHole(BirchPanel.Thickness()*2,
                                          self.__LimitSwitchMountThickness))
         self.limitswitch1 = XCG3_S1Z1(self.name+"_LimitSwitch1",
                                       limitswitchorigin.add(
@@ -648,6 +647,55 @@ class CandyBarLurchPusher(object):
         front.Scale = 1
         front.Direction=(0.0,1.0,0.0)
         front.Caption = "Front"
+        # Edge4 -- Bearing Hole Diameter
+        dim = techdoc.addObject('TechDraw::DrawViewDimension',
+                                'BearingHoleDiameter')
+        dim.Type = 'Diameter'
+        dim.References2D=[(front,'Edge4')]
+        dim.FormatSpec = "%6.4f in"%(self.bearing.OutsideDiameter/25.4)
+        dim.Arbitrary = True
+        dim.X = -30 
+        dim.Y = 1
+        page.addView(dim)
+        # Vertex6 -- bearing hole center
+        # Vertex0 -- LL -- origin
+        # Vertex1 -- UL 
+        # Vertex2 -- LR
+        # Vertex3 -- UR -- length,height
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','BlockWidth')
+        dim.Type = 'DistanceX'
+        dim.References2D=[(front,'Vertex0'),(front,'Vertex3')]
+        dim.FormatSpec='%6.4f in'%(self.__LimitSwitchMountWidth/25.4)
+        dim.Arbitrary = True
+        dim.X = 0
+        dim.Y = 55
+        page.addView(dim)
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','BlockHeight')
+        dim.Type = 'DistanceY'
+        dim.References2D=[(front,'Vertex0'),(front,'Vertex3')]
+        dim.FormatSpec='%6.4f in'%(self.__LimitSwitchMountHeight/25.4)
+        dim.Arbitrary = True
+        dim.X = 20
+        dim.Y = 0
+        page.addView(dim)
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','HoleXOffset')
+        dim.Type = 'DistanceX'
+        dim.References2D=[(front,'Vertex0'),(front,'Vertex6')]
+        holeXOffset = self.bearing.origin.x-self.limitswitchmountorigin.x
+        dim.FormatSpec='%6.4f in'%(holeXOffset/25.4)
+        dim.Arbitrary = True
+        dim.X = -35
+        dim.Y =  35
+        page.addView(dim)
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','HoleYOffset')
+        dim.Type = 'DistanceY'
+        dim.References2D=[(front,'Vertex0'),(front,'Vertex6')]
+        holeYOffset = self.bearing.origin.z-self.limitswitchmountorigin.z
+        dim.FormatSpec='%6.4f in'%(holeYOffset/25.4)
+        dim.Arbitrary = True
+        dim.X = -30
+        dim.Y = -30
+        page.addView(dim)
         side = techdoc.addObject('TechDraw::DrawViewPart',
                                   'LimitSwitchMountSideView')
         page.addView(side)
@@ -657,6 +705,46 @@ class CandyBarLurchPusher(object):
         side.Scale = 1
         side.Direction=(1.0,0.0,0.0)
         side.Caption = "Side"
+        # Vertex0 -- LL (origin)
+        # Vertex2 -- UL
+        # Vertex3 -- UR
+        # Vertex4 -- LR
+        # Vertex1 -- Slot LL
+        # Vertex7 -- Slot UL
+        # Vertex6 -- Slot UR
+        # Vertex5 -- Slot LR
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','BlockDepth')
+        dim.Type = 'DistanceX'
+        dim.References2D=[(side,'Vertex0'),(side,'Vertex3')]
+        dim.FormatSpec='%6.4f in'%(self.__LimitSwitchMountThickness/25.4)
+        dim.Arbitrary = True
+        dim.X = 0
+        dim.Y = 55
+        page.addView(dim)
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','SlotOffset')
+        dim.Type = 'DistanceX'
+        dim.References2D=[(side,'Vertex0'),(side,'Vertex1')]
+        dim.FormatSpec='0.125 in'
+        dim.Arbitrary = True
+        dim.X = -20
+        dim.Y = -10
+        page.addView(dim)
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','SlotWidth')
+        dim.Type = 'DistanceX'
+        dim.References2D=[(side,'Vertex1'),(side,'Vertex5')]
+        dim.FormatSpec='0.125 in'
+        dim.Arbitrary = True
+        dim.X = -20
+        dim.Y =   0
+        page.addView(dim)
+        dim = techdoc.addObject('TechDraw::DrawViewDimension','SlotDepth')
+        dim.Type = 'DistanceY'
+        dim.References2D=[(side,'Vertex1'),(side,'Vertex7')]
+        dim.FormatSpec='%6.4f in'%((self.__PusherHeight-XCG3_S1Z1.RollerDepth)/25.4)
+        dim.Arbitrary = True
+        dim.X = 20
+        dim.Y = 1
+        page.addView(dim)
         
         return page
     def __init__(self,name,origin):
@@ -728,7 +816,8 @@ class CandyBarLurchPusher(object):
                                                 0))
         self.pillowBlock = Panel(name+"_PillowBlock",
                                  self.pillowBlockOrigin,
-                                 self.__PusherWidth-(BirchPanel.Thickness()*4)-4,
+                                 self.__PusherWidth-
+                                    (BirchPanel.Thickness()*4)-4,
                                  self.__PusherHeight-XCG3_S1Z1.RollerDepth,
                                  side='end')
         self.pillowBlock.CutXZfingers(endx=self.__PusherWidth-
