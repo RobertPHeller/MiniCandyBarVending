@@ -8,7 +8,7 @@
 #  Author        : $Author$
 #  Created By    : Robert Heller
 #  Created       : Sun Jul 6 15:01:26 2025
-#  Last Modified : <250712.0909>
+#  Last Modified : <250712.0918>
 #
 #  Description	
 #
@@ -983,7 +983,7 @@ if __name__ == '__main__':
                 lastX = newX
                 lastY = newY
                 break
-    page = pusher.LimitSwitchMountDrawing(techdoc)
+    LimitSwitchMountPage = pusher.LimitSwitchMountDrawing(techdoc)
     techdoc.recompute()
     sleep(500)
     for page,number in Pages:
@@ -991,7 +991,7 @@ if __name__ == '__main__':
                      os.path.join(os.path.dirname(__file__),
                                   "Pusher_Panel%03d.svg"%(number)))
         
-    TechDrawGui.exportPageAsPdf(page,
+    TechDrawGui.exportPageAsPdf(LimitSwitchMountPage,
                       os.path.join(os.path.dirname(__file__),
                                    "LimitSwitchMount.pdf"))
 
